@@ -2,7 +2,7 @@ const TelegramBot = require('node-telegram-bot-api')
 const path = require('path')
 const fs = require('fs')
 
-const COMMANDS_DIR = path.join(__dirname, '..', '..', 'bot', 'telegram', 'commands')
+const COMMANDS_DIR = path.join(__dirname, '..', '..', 'bot-commands')
 
 module.exports = container => {
   const logger = container.logger.get()
@@ -12,11 +12,35 @@ module.exports = container => {
   const options = {}
   if (Number.parseInt(process.env.TELEGRAM_USE_WEB_HOOKS) !== 1) {
     options.polling = true
+  } else {
+    options.webHook = {
+      port: parseInt(process.env.BOT_APP_PORT),
+        key: path.join(__dirname, '..', '..', 'ssl', 'key.pem'),
+        cert: path.join(__dirname, '..', '..', 'ssl', 'crt.pem')
+    }
   }
 
   const bot = new TelegramBot(process.env.TELEGRAM_API_TOKEN, options)
 
   logger.info('Telegram bot is created')
+
+  if (parseInt(process.env.TELEGRAM_USE_WEB_HOOKS) === 1) {
+    const setWebHook = async () => {
+      const webHookUrl = `${process.env.PUBLIC_URL}${process.env.TELEGRAM_WEB_HOOK_URL}${process.env.TELEGRAM_API_TOKEN}`
+      logger.info(`WebHook url: ${webHookUrl}. Get current WebHookInfo...`)
+      await bot.deleteWebHook()
+      const webHookInfo = await bot.getWebHookInfo()
+      logger.info(`WebHook info: ${JSON.stringify(webHookInfo)}`)
+      if (webHookInfo.url !== webHookUrl) {
+        const setWebHookResult = await bot.setWebHook(webHookUrl, {
+          certificate: options.webHook.cert
+        })
+        logger.info(`setWebHookResult = ${setWebHookResult}`)
+      }
+      logger.info(`Telegram web hook is set`)
+    }
+    setWebHook().catch(err => logger.error(err))
+  }
 
   return {
     bot,
@@ -31,26 +55,6 @@ module.exports = container => {
         })
       logger.info('Telegram commands are loaded')
       return this
-    },
-    async setWebHook ({app}) {
-      logger.debug(`setWebHook method call. Use web hooks: ${process.env.TELEGRAM_USE_WEB_HOOKS}`)
-      if (parseInt(process.env.TELEGRAM_USE_WEB_HOOKS) === 1) {
-        const webHookUrl = `${process.env.APP_URL}${process.env.TELEGRAM_WEB_HOOK_URL}${process.env.TELEGRAM_API_TOKEN}`
-        logger.info(`WebHook url: ${webHookUrl}. Get current WebHookInfo...`)
-        await bot.deleteWebHook()
-        const webHookInfo = await bot.getWebHookInfo()
-        logger.info(`WebHook info: ${JSON.stringify(webHookInfo)}`)
-        app.post(`${process.env.TELEGRAM_WEB_HOOK_URL}${process.env.TELEGRAM_API_TOKEN}`, (req, res) => {
-          logger.debug('Get update from telegram via webhook')
-          bot.processUpdate(req.body)
-          res.sendStatus(200)
-        })
-        if (webHookInfo.url !== webHookUrl) {
-          const setWebHookResult = await bot.setWebHook(webHookUrl)
-          logger.info(`setWebHookResult = ${setWebHookResult}`)
-        }
-        logger.info(`Telegram web hook is set`)
-      }
     }
   }
 }
