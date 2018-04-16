@@ -1,0 +1,29 @@
+{
+  "name": "socks5-proxy",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.js",
+  "dependencies": {
+    "awilix": "^3.0.7",
+    "bcrypt": "^2.0.0",
+    "bluebird": "^3.5.1",
+    "chalk": "^2.3.2",
+    "cli-table": "^0.3.1",
+    "dotenv": "^5.0.1",
+    "figlet": "^1.2.0",
+    "inquirer": "^5.2.0",
+    "lodash": "^4.17.5",
+    "log4js": "^2.5.3",
+    "redis": "^2.8.0",
+    "simple-socks": "git+https://github.com/jfowl/simple-socks.git"
+  },
+  "devDependencies": {
+    "nodemon": "^1.17.3"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "nodemon app.js"
+  },
+  "author": "Nikita Kondratev",
+  "license": "ISC"
+}
