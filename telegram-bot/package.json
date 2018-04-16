@@ -4,7 +4,8 @@
   "description": "",
   "main": "app.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "nodemon app.js"
   },
   "author": "Nikita Kondratev <highflyer16@yandex.ru>",
   "license": "ISC",
@@ -22,5 +23,8 @@
     "sequelize": "^4.37.6",
     "umzug": "^2.1.0",
     "yargs": "^11.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^1.17.3"
   }
 }
