@@ -1,0 +1,26 @@
+{
+  "name": "telegram-bot",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Nikita Kondratev <highflyer16@yandex.ru>",
+  "license": "ISC",
+  "dependencies": {
+    "awilix": "^3.0.7",
+    "bcrypt": "^2.0.0",
+    "bluebird": "^3.5.1",
+    "chalk": "^2.3.2",
+    "dotenv": "^5.0.1",
+    "generate-password": "^1.4.0",
+    "lodash": "^4.17.5",
+    "log4js": "^2.5.3",
+    "mysql2": "^1.5.3",
+    "node-telegram-bot-api": "^0.30.0",
+    "sequelize": "^4.37.6",
+    "umzug": "^2.1.0",
+    "yargs": "^11.0.0"
+  }
+}

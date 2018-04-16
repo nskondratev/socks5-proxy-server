@@ -10,7 +10,7 @@ services:
   proxy:
     depends_on:
       - redis
-    build: .
+    build: ./app
     volumes:
       - ./app:/app
       - /app/node_modules
