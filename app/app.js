@@ -9,6 +9,7 @@ const Promise = require('bluebird')
 const bcrypt = Promise.promisifyAll(require('bcrypt'))
 const fs = require('fs')
 const path = require('path')
+const schedule = require('node-schedule')
 
 if (fs.existsSync(path.join(__dirname, '.env'))) {
   require('dotenv').config()
@@ -92,4 +93,15 @@ server.on('proxyError', function (err) {
 // When a proxy connection ends
 server.on('proxyEnd', function (response, args) {
   logger.debug(`socket closed with code ${response}, args: ${JSON.stringify(args)}`)
+})
+
+// Clear data usage stats at the beginning of each month
+schedule.scheduleJob('0 0 0 1 * *', async () => {
+  logger.debug('Clear data usage...')
+  try {
+    await redis.delAsync(CONSTANTS.REDIS.DATA_USAGE_KEY)
+    logger.info('Data usage is cleared.')
+  } catch (err) {
+    logger.warn(err)
+  }
 })
