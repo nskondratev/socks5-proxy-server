@@ -7,6 +7,18 @@ services:
       - ./data/redis:/data
     restart: always
 
+  mysql:
+      image: mysql:5.7
+      command: mysqld --character-set-server=utf8 --collation-server=utf8_general_ci --init-connect='SET NAMES UTF8;' --innodb-flush-log-at-trx-commit=0
+      environment:
+        - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+        - MYSQL_DATABASE=${MYSQL_DATABASE}
+        - MYSQL_USER=${MYSQL_USER}
+        - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      volumes:
+        - ./data/mysql:/var/lib/mysql
+      restart: always
+
   proxy:
     depends_on:
       - redis
@@ -26,3 +38,28 @@ services:
     expose:
       - "${APP_PORT}/tcp"
     restart: always
+
+  telegram_bot:
+    depends_on:
+      - redis
+      - mysql
+    build: ./telegram-bot
+    volumes:
+      - ./telegram-bot:/app
+      - /app/node_modules
+    environment:
+      BOT_APP_PORT: ${BOT_APP_PORT}
+      LOG_LEVEL: ${LOG_LEVEL}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_DB: 0
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: ${MYSQL_DATABASE}
+      DB_USER: ${MYSQL_USER}
+      DB_PASS: ${MYSQL_PASSWORD}
+      DB_DIALECT: 'mysql'
+      PUBLIC_URL: ${PUBLIC_URL}
+      TELEGRAM_API_TOKEN: ${TELEGRAM_API_TOKEN}
+      TELEGRAM_USE_WEBHOOKS: ${TELEGRAM_USE_WEBHOOKS}
+      NTBA_FIX_319: ${NTBA_FIX_319}
