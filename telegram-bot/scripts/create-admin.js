@@ -17,9 +17,9 @@ const createAdmin = async data => {
 }
 
 const main = async () => {
-  const logo = await figlet('Create admin', {font: 'Standard'})
-  console.log(chalk.blueBright(logo))
   try {
+    const logo = await figlet('Create admin', {font: 'Standard'})
+    console.log(chalk.blueBright(logo))
     const answers = await inquirer.prompt([
       {
         type: 'input',
