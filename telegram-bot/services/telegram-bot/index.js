@@ -10,6 +10,24 @@ module.exports = container => {
   logger.debug('Init telegram bot...')
 
   const options = {}
+  if (process.env.PROXY_SOCKS5_HOST) {
+    options.request = {
+      agentClass: require('socks5-https-client/lib/Agent'),
+      agentOptions: {
+        socksHost: process.env.PROXY_SOCKS5_HOST
+      }
+    }
+    if (process.env.PROXY_SOCKS5_PORT) {
+      options.request.agentOptions.socksPort = parseInt(process.env.PROXY_SOCKS5_PORT)
+    }
+    if (process.env.PROXY_SOCKS5_USERNAME) {
+      options.request.agentOptions.socksUsername = process.env.PROXY_SOCKS5_USERNAME
+    }
+    if (process.env.PROXY_SOCKS5_PASSWORD) {
+      options.request.agentOptions.socksPassword = process.env.PROXY_SOCKS5_PASSWORD
+    }
+  }
+
   if (Number.parseInt(process.env.TELEGRAM_USE_WEB_HOOKS) !== 1) {
     options.polling = true
   } else {
@@ -41,6 +59,8 @@ module.exports = container => {
     }
     setWebHook().catch(err => logger.error(err))
   }
+
+  bot.on('polling_error', err => logger.error(err))
 
   return {
     bot,

@@ -21,6 +21,7 @@
     "mysql2": "^1.5.3",
     "node-telegram-bot-api": "^0.30.0",
     "sequelize": "^4.37.6",
+    "socks5-https-client": "^1.2.1",
     "umzug": "^2.1.0",
     "yargs": "^11.0.0"
   },
