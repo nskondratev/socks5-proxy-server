@@ -62,6 +62,8 @@ module.exports = container => {
 
   bot.on('polling_error', err => logger.error(err))
 
+  bot.on('webhook_error', err => logger.error(err))
+
   return {
     bot,
     initCommands () {
