@@ -2,7 +2,7 @@ FROM node:8.11.1-alpine
 
 RUN apk add --no-cache python g++ make
 
-ADD . /telegram-bot
+ADD . /app
 
 WORKDIR /app
 
