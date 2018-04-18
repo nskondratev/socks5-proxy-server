@@ -1,5 +1,6 @@
 const Promise = require('bluebird')
 const bcrypt = Promise.promisifyAll(require('bcrypt'))
+const _ = require('lodash')
 
 module.exports = container => {
   const logger = container.logger.get()
@@ -72,6 +73,23 @@ module.exports = container => {
         ['hdel', REDIS.AUTH_USER_KEY, username],
         // ['hdel', CONSTANTS.REDIS.DATA_USAGE_KEY, username] // Not remove data usage stats
       ]).execAsync()
+    },
+
+    async getUserState (username) {
+      const userState = await redis.hgetAsync(REDIS.USER_STATE, username)
+      return _.isString(userState) ? JSON.parse(userState) : userState
+    },
+
+    async setUserState (username, state) {
+      return await redis.hsetAsync(REDIS.USER_STATE, username, JSON.stringify(state))
+    },
+
+    getChatIdAndUserName (msg) {
+      return {username: msg.from.username, chatId: msg.chat.id}
+    },
+
+    async isUsernameFree (username) {
+      return !parseInt(await redis.hexistsAsync(REDIS.AUTH_USER_KEY, username))
     }
   }
 }
