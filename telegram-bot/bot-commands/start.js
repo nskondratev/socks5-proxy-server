@@ -11,6 +11,7 @@ module.exports = (container, bot) => {
       let message = 'Hello! You are not an admin of this proxy server.'
       if (isAdmin) {
         message = 'Hello! You can manage proxy server.'
+        await util.updateAdminChatId(username, chatId)
       }
       await bot.sendMessage(chatId, message)
     } catch (err) {

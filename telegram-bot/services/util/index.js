@@ -15,6 +15,10 @@ module.exports = container => {
       return await redis.hsetAsync(REDIS.ADMIN_USER_KEY, username, 1)
     },
 
+    async updateAdminChatId (username, chatId) {
+      return await redis.hsetAsync(REDIS.ADMIN_USER_KEY, username, chatId)
+    },
+
     async deleteAdmin (username) {
       return await redis.hdelAsync(REDIS.ADMIN_USER_KEY, username)
     },
