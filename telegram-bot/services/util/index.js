@@ -90,6 +90,10 @@ module.exports = container => {
 
     async isUsernameFree (username) {
       return !parseInt(await redis.hexistsAsync(REDIS.AUTH_USER_KEY, username))
+    },
+
+    async getUsers () {
+      return await redis.hkeysAsync(REDIS.AUTH_USER_KEY)
     }
   }
 }

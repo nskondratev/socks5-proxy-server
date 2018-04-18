@@ -62,6 +62,29 @@ module.exports = (container, bot) => {
     }
   })
 
+  bot.onText(/\/get_users(.*)/, async (msg, match) => {
+    const {chatId, username} = util.getChatIdAndUserName(msg)
+    logger.debug(`Received get users request from @${username}`)
+    try {
+      if (!await util.isAdmin(username)) {
+        await bot.sendMessage(chatId, 'Sorry, this functionality is available only for admin users.')
+      } else {
+        await util.setUserState(username, {state: USER_STATE.IDLE, data: {}})
+        const users = await util.getUsers()
+        let message = 'No users.'
+        if (users.length) {
+          message = `*Users*:\n\n`
+          users.sort().forEach((u, i) => message += `${i + 1}. ${u}\n`)
+          message += `\n*Total: ${users.length}*`
+        }
+        await bot.sendMessage(chatId, message, {parse_mode: 'Markdown', reply_markup: {remove_keyboard: true}})
+      }
+    } catch (err) {
+      logger.error(err)
+      await bot.sendMessage(chatId, err.message, {reply_markup: {remove_keyboard: true}})
+    }
+  })
+
   bot.onText(/\/generate_pass(.*)/, async (msg, match) => {
     const {chatId} = util.getChatIdAndUserName(msg)
     try {
