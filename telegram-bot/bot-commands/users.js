@@ -121,7 +121,7 @@ module.exports = (container, bot) => {
               } else {
                 await util.createUser(userState.data.username, proxyPassword)
                 await util.setUserState(username, {state: USER_STATE.IDLE, data: {}})
-                const message = `User created. Send this settings to him:\n\n*host:* ${process.env.APP_IP}\n*port:* ${process.env.APP_PORT}\n*username:* ${userState.data.username}\n*password:* ${proxyPassword}`
+                const message = `User created. Send this settings to him:\n\n*host:* ${process.env.PROXY_IP}\n*port:* ${process.env.APP_PORT}\n*username:* ${userState.data.username}\n*password:* ${proxyPassword}`
                 await bot.sendMessage(chatId, message, {parse_mode: 'Markdown', reply_markup: {remove_keyboard: true}})
               }
               break

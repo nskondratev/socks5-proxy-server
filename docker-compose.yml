@@ -35,6 +35,8 @@ services:
       - ./telegram-bot:/app
       - /app/node_modules
     environment:
+      APP_PORT: ${APP_PORT}
+      PROXY_IP: ${PROXY_IP}
       BOT_APP_PORT: ${BOT_APP_PORT}
       LOG_LEVEL: ${LOG_LEVEL}
       REDIS_HOST: redis
