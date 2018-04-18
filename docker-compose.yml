@@ -10,7 +10,7 @@ services:
   proxy:
     depends_on:
       - redis
-    build: .
+    build: ./app
     volumes:
       - ./app:/app
       - /app/node_modules
@@ -25,4 +25,28 @@ services:
       - "${APP_PORT}:${APP_PORT}"
     expose:
       - "${APP_PORT}/tcp"
+    restart: always
+
+  telegram_bot:
+    depends_on:
+      - redis
+    build: ./telegram-bot
+    volumes:
+      - ./telegram-bot:/app
+      - /app/node_modules
+    environment:
+      APP_PORT: ${APP_PORT}
+      BOT_APP_PORT: ${BOT_APP_PORT}
+      LOG_LEVEL: ${LOG_LEVEL}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_DB: 0
+      PUBLIC_URL: ${PUBLIC_URL}
+      TELEGRAM_API_TOKEN: ${TELEGRAM_API_TOKEN}
+      TELEGRAM_USE_WEBHOOKS: ${TELEGRAM_USE_WEBHOOKS}
+      NTBA_FIX_319: ${NTBA_FIX_319}
+    ports:
+      - "${BOT_APP_PORT}:${BOT_APP_PORT}"
+    expose:
+      - "${BOT_APP_PORT}/tcp"
     restart: always

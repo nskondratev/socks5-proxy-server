@@ -2,9 +2,7 @@ FROM node:8.11.1-alpine
 
 RUN apk add --no-cache git python g++ make
 
-#RUN ["git", "--version"]
-
-ADD ./app /app
+ADD . /app
 
 WORKDIR /app
 
