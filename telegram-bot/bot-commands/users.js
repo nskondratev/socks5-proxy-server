@@ -1,3 +1,5 @@
+const moment = require('moment')
+
 module.exports = (container, bot) => {
   const logger = container.logger.get()
   const util = container.util
@@ -13,7 +15,7 @@ module.exports = (container, bot) => {
         const dataUsage = await util.getUsersStats()
         let message = `*Data usage by users:*\n\n`
         dataUsage.forEach(u => {
-          message += `*${u[0]}.* ${u[1]} (${u[4]}): ${u[3]}\n`
+          message += `*${u[0]}.* ${u[1]} (${moment(u[4]).fromNow()}): ${u[3]}\n`
         })
         await bot.sendMessage(chatId, message, {parse_mode: 'Markdown'})
       }

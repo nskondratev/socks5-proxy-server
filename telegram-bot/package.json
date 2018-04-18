@@ -20,12 +20,10 @@
     "inquirer": "^5.2.0",
     "lodash": "^4.17.5",
     "log4js": "^2.5.3",
-    "mysql2": "^1.5.3",
+    "moment": "^2.22.1",
     "node-telegram-bot-api": "^0.30.0",
-    "sequelize": "^4.37.6",
     "socks5-https-client": "^1.2.1",
-    "umzug": "^2.1.0",
-    "yargs": "^11.0.0"
+    "umzug": "^2.1.0"
   },
   "devDependencies": {
     "nodemon": "^1.17.3"
