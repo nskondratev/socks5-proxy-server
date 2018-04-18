@@ -15,11 +15,11 @@ module.exports = (container, bot) => {
         await bot.sendMessage(chatId, 'Sorry, this functionality is available only for admin users.')
       } else {
         const dataUsage = await util.getUsersStats()
-        let message = `*Data usage by users:*\n\n`
+        let message = `<b>Data usage by users:</b>\n\n`
         dataUsage.forEach(u => {
-          message += `*${u[0]}.* ${u[1]} (${moment(u[4]).fromNow()}): ${u[3]}\n`
+          message += `<b>${u[0]}.</b> ${u[1]} (${moment(u[4]).fromNow()}): ${u[3]}\n`
         })
-        await bot.sendMessage(chatId, message, {parse_mode: 'Markdown', reply_markup: {remove_keyboard: true}})
+        await bot.sendMessage(chatId, message, {parse_mode: 'HTML', reply_markup: {remove_keyboard: true}})
         await util.setUserState(username, {state: USER_STATE.IDLE, data: {}})
       }
     } catch (err) {
@@ -73,11 +73,11 @@ module.exports = (container, bot) => {
         const users = await util.getUsers()
         let message = 'No users.'
         if (users.length) {
-          message = `*Users*:\n\n`
+          message = `<b>Users</b>:\n\n`
           users.sort().forEach((u, i) => message += `${i + 1}. ${u}\n`)
-          message += `\n*Total: ${users.length}*`
+          message += `\n<b>Total: ${users.length}</b>`
         }
-        await bot.sendMessage(chatId, message, {parse_mode: 'Markdown', reply_markup: {remove_keyboard: true}})
+        await bot.sendMessage(chatId, message, {parse_mode: 'HTML', reply_markup: {remove_keyboard: true}})
       }
     } catch (err) {
       logger.error(err)
@@ -144,8 +144,8 @@ module.exports = (container, bot) => {
               } else {
                 await util.createUser(userState.data.username, proxyPassword)
                 await util.setUserState(username, {state: USER_STATE.IDLE, data: {}})
-                const message = `User created. Send this settings to him:\n\n*host:* ${process.env.PROXY_IP}\n*port:* ${process.env.APP_PORT}\n*username:* ${userState.data.username}\n*password:* ${proxyPassword}`
-                await bot.sendMessage(chatId, message, {parse_mode: 'Markdown', reply_markup: {remove_keyboard: true}})
+                const message = `User created. Send this settings to him:\n\n<b>host:</b> ${process.env.PROXY_IP}\n<b>port:</b> ${process.env.APP_PORT}\n<b>username:</b> ${userState.data.username}\n<b>password:</b> ${proxyPassword}`
+                await bot.sendMessage(chatId, message, {parse_mode: 'HTML', reply_markup: {remove_keyboard: true}})
               }
               break
             case USER_STATE.DELETE_USER_ENTER_USERNAME:
