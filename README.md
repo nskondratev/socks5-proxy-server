@@ -36,3 +36,15 @@ docker exec -it socks5proxy_proxy_1 sh -c 'exec node scripts/delete-user.js'
 ```bash
 docker exec -it socks5proxy_proxy_1 sh -c 'exec node scripts/users-stats.js'
 ```
+
+## Configure Telegram bot for administration
+- Initialize bot at @botfather, get API token
+- Set params in .env:
+  - PUBLIC_URL - URL to server. E.g. http://proxy.domain.com:8443
+  - TELEGRAM_API_TOKEN - API token from BotFather
+  - TELEGRAM_WEBHOOK_URL - default: /webhook
+  - TELEGRAM_USE_WEBHOOKS - 1 - use webhooks, 0 - use polling. To use webhooks you need to generate ssl certificates
+- Create admin:
+```bash
+docker exec -it socks5proxy_telegram_bot_1 sh -c 'exec node scripts/create-admin.js' 
+```
