@@ -37,7 +37,8 @@ docker exec -it socks5proxy_proxy_1 sh -c 'exec node scripts/delete-user.js'
 docker exec -it socks5proxy_proxy_1 sh -c 'exec node scripts/users-stats.js'
 ```
 
-## Configure Telegram bot for administration
+## Telegram bot for administration
+### Configuration
 - Initialize bot at @botfather, get API token
 - Set params in .env:
   - PUBLIC_URL - URL to server. E.g. http://proxy.domain.com:8443
@@ -48,3 +49,11 @@ docker exec -it socks5proxy_proxy_1 sh -c 'exec node scripts/users-stats.js'
 ```bash
 docker exec -it socks5proxy_telegram_bot_1 sh -c 'exec node scripts/create-admin.js' 
 ```
+
+### Available commands
+- `/users_stats` - show data usage statistics per user
+- `/create_user` - create new proxy user
+- `/delete_user` - delete proxy user
+- `/get_users` - get list of proxy users
+- `/generate_pass [length]` - generate random password with specified length (10 by default)
+
