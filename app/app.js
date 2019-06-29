@@ -73,10 +73,12 @@ server.on('proxyConnect', info => {
   logger.debug(`Connected to remote server at ${info.host}:${info.port}`)
 })
 
-server.on('proxyData', async ({data, user, kill}) => {
+server.on('proxyData', async ({ data, user, kill }) => {
   try {
-    logger.debug(`Increase user @${user.username} data usage by ${data.length}`)
-    await redis.hincrbyAsync(CONSTANTS.REDIS.DATA_USAGE_KEY, user.username, data.length)
+    if (user) {
+      logger.debug(`Increase user @${user.username} data usage by ${data.length}`)
+      await redis.hincrbyAsync(CONSTANTS.REDIS.DATA_USAGE_KEY, user.username, data.length)
+    }
   } catch (err) {
     logger.error(err)
   }
