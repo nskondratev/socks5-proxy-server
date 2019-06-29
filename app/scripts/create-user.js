@@ -1,5 +1,5 @@
 const Promise = require('bluebird')
-const bcrypt = Promise.promisifyAll(require('bcrypt'))
+const bcrypt = require('bcrypt')
 const inquirer = require('inquirer')
 const figlet = Promise.promisify(require('figlet'))
 const chalk = require('chalk')
@@ -21,12 +21,12 @@ const createUser = async data => {
   if (userPassword) {
     throw new Error('User with provided username already exists')
   }
-  const hashedPassword = await bcrypt.hashAsync(data.password, 10)
+  const hashedPassword = await bcrypt.hash(data.password, 10)
   await redis.hsetAsync(CONSTANTS.REDIS.AUTH_USER_KEY, data.username, hashedPassword)
 }
 
 ;(async () => {
-  const logo = await figlet('Create user', {font: 'Standard'})
+  const logo = await figlet('Create user', { font: 'Standard' })
   console.log(chalk.blueBright(logo))
   try {
     const answers = await inquirer.prompt([

@@ -33,8 +33,8 @@ module.exports = container => {
   } else {
     options.webHook = {
       port: parseInt(process.env.BOT_APP_PORT),
-        key: path.join(__dirname, '..', '..', 'ssl', 'key.pem'),
-        cert: path.join(__dirname, '..', '..', 'ssl', 'crt.pem')
+      key: path.join(__dirname, '..', '..', 'ssl', 'key.pem'),
+      cert: path.join(__dirname, '..', '..', 'ssl', 'crt.pem')
     }
   }
 

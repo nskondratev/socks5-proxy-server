@@ -16,30 +16,30 @@ const redis = container.cradle.redis
 const CONSTANTS = container.cradle.constants
 
 const parseStatsResults = (data, lastLoginData) => {
-    const users = []
-    if (data) {
-      Object.keys(data).forEach(username => users.push({username, usage: parseInt(data[username])}))
-      users.sort((a, b) => b.usage - a.usage)
-      return users.map((u, i) => {
-        let usage = `${u.usage} B`
-        if (u.usage > 1073741824) {
-          // Usage in GB
-          usage = `${(u.usage / 1073741824).toFixed(2)} GB`
-        } else if (u.usage > 1048576) {
-          // Usage in MB
-          usage = `${(u.usage / 1048576).toFixed(2)} MB`
-        } else if (u.usage > 1024) {
-          // Usage in KB
-          usage = `${(u.usage / 1024).toFixed(2)} KB`
-        }
-        return [i + 1, ...Object.values(u), usage, lastLoginData[u.username] || '-']
-      })
-    }
-    return users
+  const users = []
+  if (data) {
+    Object.keys(data).forEach(username => users.push({ username, usage: parseInt(data[username]) }))
+    users.sort((a, b) => b.usage - a.usage)
+    return users.map((u, i) => {
+      let usage = `${u.usage} B`
+      if (u.usage > 1073741824) {
+        // Usage in GB
+        usage = `${(u.usage / 1073741824).toFixed(2)} GB`
+      } else if (u.usage > 1048576) {
+        // Usage in MB
+        usage = `${(u.usage / 1048576).toFixed(2)} MB`
+      } else if (u.usage > 1024) {
+        // Usage in KB
+        usage = `${(u.usage / 1024).toFixed(2)} KB`
+      }
+      return [i + 1, ...Object.values(u), usage, lastLoginData[u.username] || '-']
+    })
   }
+  return users
+}
 
 ;(async () => {
-  const logo = await figlet('Proxy server users stats', {font: 'Standard'})
+  const logo = await figlet('Proxy server users stats', { font: 'Standard' })
   console.log(chalk.blueBright(logo))
   try {
     let [dataUsage, lastLogin] = await Promise.all([

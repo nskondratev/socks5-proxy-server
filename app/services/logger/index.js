@@ -18,7 +18,7 @@ module.exports = () => ({
 
     log4js.configure({
       appenders: {
-        console: {type: 'console', layout: layout.console},
+        console: { type: 'console', layout: layout.console },
         file: {
           type: 'file',
           filename: path.join(__dirname, '..', '..', 'logs', 'cheese.log'),
@@ -30,13 +30,13 @@ module.exports = () => ({
         }
       },
       categories: {
-        default: {appenders: ['console', 'file'], level: process.env.LOG_LEVEL || 'info'}
+        default: { appenders: ['console', 'file'], level: process.env.LOG_LEVEL || 'info' }
       }
     })
     return logger
   },
   getConnectMiddleware (level = 'info') {
-    return log4js.connectLogger(this.get(), {level})
+    return log4js.connectLogger(this.get(), { level })
   },
   shutdown: () => log4js.shutdown()
 })
