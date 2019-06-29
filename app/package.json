@@ -19,11 +19,14 @@
     "simple-socks": "git+https://github.com/jfowl/simple-socks.git"
   },
   "devDependencies": {
-    "nodemon": "^1.19.1"
+    "nodemon": "^1.19.1",
+    "standard": "^12.0.1"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "nodemon app.js"
+    "dev": "nodemon app.js",
+    "lint": "standard",
+    "lint:fix": "standard --fix"
   },
   "author": "Nikita Kondratev",
   "license": "ISC"

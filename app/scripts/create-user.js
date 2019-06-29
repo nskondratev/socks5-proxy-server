@@ -26,7 +26,7 @@ const createUser = async data => {
 }
 
 ;(async () => {
-  const logo = await figlet('Create user', {font: 'Standard'})
+  const logo = await figlet('Create user', { font: 'Standard' })
   console.log(chalk.blueBright(logo))
   try {
     const answers = await inquirer.prompt([
