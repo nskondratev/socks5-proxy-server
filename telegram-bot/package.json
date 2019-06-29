@@ -5,7 +5,9 @@
   "main": "app.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "nodemon app.js"
+    "dev": "nodemon app.js",
+    "lint": "standard",
+    "lint:fix": "standard --fix"
   },
   "author": "Nikita Kondratev <highflyer16@yandex.ru>",
   "license": "ISC",
@@ -26,6 +28,7 @@
     "socks5-https-client": "^1.2.1"
   },
   "devDependencies": {
-    "nodemon": "^1.19.1"
+    "nodemon": "^1.19.1",
+    "standard": "^12.0.1"
   }
 }

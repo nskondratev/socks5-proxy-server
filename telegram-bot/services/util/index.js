@@ -3,7 +3,6 @@ const bcrypt = Promise.promisifyAll(require('bcrypt'))
 const _ = require('lodash')
 
 module.exports = container => {
-  const logger = container.logger.get()
   const redis = container.redis
   const REDIS = container.constants.redis
 
@@ -13,22 +12,22 @@ module.exports = container => {
     },
 
     async createAdmin (username) {
-      return await redis.hsetAsync(REDIS.ADMIN_USER_KEY, username, 1)
+      return redis.hsetAsync(REDIS.ADMIN_USER_KEY, username, 1)
     },
 
     async updateAdminChatId (username, chatId) {
-      return await redis.hsetAsync(REDIS.ADMIN_USER_KEY, username, chatId)
+      return redis.hsetAsync(REDIS.ADMIN_USER_KEY, username, chatId)
     },
 
     async deleteAdmin (username) {
-      return await redis.hdelAsync(REDIS.ADMIN_USER_KEY, username)
+      return redis.hdelAsync(REDIS.ADMIN_USER_KEY, username)
     },
 
     async getUsersStats () {
       const parseStatsResults = (data, lastLoginData) => {
         const users = []
         if (data) {
-          Object.keys(data).forEach(username => users.push({username, usage: parseInt(data[username])}))
+          Object.keys(data).forEach(username => users.push({ username, usage: parseInt(data[username]) }))
           users.sort((a, b) => b.usage - a.usage)
           return users.map((u, i) => {
             let usage = `${u.usage} B`
@@ -70,7 +69,7 @@ module.exports = container => {
         throw new Error('User with provided username not found')
       }
       await redis.batch([
-        ['hdel', REDIS.AUTH_USER_KEY, username],
+        ['hdel', REDIS.AUTH_USER_KEY, username]
         // ['hdel', CONSTANTS.REDIS.DATA_USAGE_KEY, username] // Not remove data usage stats
       ]).execAsync()
     },
@@ -81,11 +80,11 @@ module.exports = container => {
     },
 
     async setUserState (username, state) {
-      return await redis.hsetAsync(REDIS.USER_STATE, username, JSON.stringify(state))
+      return redis.hsetAsync(REDIS.USER_STATE, username, JSON.stringify(state))
     },
 
     getChatIdAndUserName (msg) {
-      return {username: msg.from.username, chatId: msg.chat.id}
+      return { username: msg.from.username, chatId: msg.chat.id }
     },
 
     async isUsernameFree (username) {
@@ -93,7 +92,7 @@ module.exports = container => {
     },
 
     async getUsers () {
-      return await redis.hkeysAsync(REDIS.AUTH_USER_KEY)
+      return redis.hkeysAsync(REDIS.AUTH_USER_KEY)
     }
   }
 }

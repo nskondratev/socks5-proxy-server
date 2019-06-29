@@ -12,7 +12,7 @@ module.exports = (container, bot) => {
       let message = 'Hello! You are not an admin of this proxy server.'
       if (isAdmin) {
         message = 'Hello! You can manage proxy server.'
-        const userState = {state: USER_STATE.IDLE, data: {}}
+        const userState = { state: USER_STATE.IDLE, data: {} }
         await util.setUserState(username, userState)
         await util.updateAdminChatId(username, chatId)
       }
