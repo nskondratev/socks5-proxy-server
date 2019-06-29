@@ -16,9 +16,13 @@ module.exports = (container, bot) => {
       } else {
         const dataUsage = await util.getUsersStats()
         let message = `<b>Data usage by users:</b>\n\n`
-        dataUsage.forEach(u => {
-          message += `<b>${u[0]}.</b> ${u[1]} (${moment(u[4]).fromNow()}): ${u[3]}\n`
-        })
+        if (dataUsage.length > 0) {
+          dataUsage.forEach(u => {
+            message += `<b>${u[0]}.</b> ${u[1]} (${moment(u[4]).fromNow()}): ${u[3]}\n`
+          })
+        } else {
+          message += 'No usage stats.'
+        }
         await bot.sendMessage(chatId, message, {parse_mode: 'HTML', reply_markup: {remove_keyboard: true}})
         await util.setUserState(username, {state: USER_STATE.IDLE, data: {}})
       }

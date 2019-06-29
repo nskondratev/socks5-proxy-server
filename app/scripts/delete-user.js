@@ -22,7 +22,6 @@ const deleteUser = async ({username}) => {
     }
     await redis.batch([
       ['hdel', CONSTANTS.REDIS.AUTH_USER_KEY, username],
-      // ['hdel', CONSTANTS.REDIS.DATA_USAGE_KEY, username] // Not remove data usage stats
     ]).execAsync()
   }
 

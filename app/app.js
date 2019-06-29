@@ -5,8 +5,7 @@ try {
   process.exit(1)
 }
 
-const Promise = require('bluebird')
-const bcrypt = Promise.promisifyAll(require('bcrypt'))
+const bcrypt = require('bcrypt')
 const fs = require('fs')
 const path = require('path')
 const schedule = require('node-schedule')
@@ -14,6 +13,7 @@ const schedule = require('node-schedule')
 if (fs.existsSync(path.join(__dirname, '.env'))) {
   require('dotenv').config()
 }
+
 const container = require('./services')
 
 const redis = container.cradle.redis
@@ -36,7 +36,7 @@ if (parseInt(process.env.REQUIRE_AUTH) === 1) {
       if (!userPassword) {
         return handleError(new Error('User not found'))
       }
-      const isPasswordCorrect = await bcrypt.compareAsync(password, userPassword)
+      const isPasswordCorrect = await bcrypt.compare(password, userPassword)
       if (isPasswordCorrect) {
         // Successfully authenticated
         return setImmediate(cb)
@@ -68,12 +68,9 @@ server.on('authenticate', async username => {
 // When authentication fails
 server.on('authenticateError', (username, err) => logger.info(`User @${username} fails authentication:`, err))
 
-// When a reqest arrives for a remote destination
-server.on('proxyConnect', (info, destination) => {
+// When a request arrives for a remote destination
+server.on('proxyConnect', info => {
   logger.debug(`Connected to remote server at ${info.host}:${info.port}`)
-  // destination.on('data', function (data) {
-  //   console.log(data.length)
-  // })
 })
 
 server.on('proxyData', async ({data, user, kill}) => {
