@@ -19,9 +19,9 @@
     "dotenv": "^8.0.0",
     "figlet": "^1.2.3",
     "generate-password": "^1.4.2",
-    "inquirer": "^6.4.1",
-    "lodash": "^4.17.11",
-    "log4js": "^4.4.0",
+    "inquirer": "^6.5.0",
+    "lodash": "^4.17.15",
+    "log4js": "^4.5.1",
     "moment": "^2.24.0",
     "node-telegram-bot-api": "^0.30.0",
     "redis": "^2.8.0",
@@ -29,6 +29,6 @@
   },
   "devDependencies": {
     "nodemon": "^1.19.1",
-    "standard": "^12.0.1"
+    "standard": "^13.1.0"
   }
 }
