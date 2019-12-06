@@ -1,4 +1,4 @@
-FROM node:10.16.1-jessie
+FROM node:10.17.0-jessie
 
 ADD . /app
 
