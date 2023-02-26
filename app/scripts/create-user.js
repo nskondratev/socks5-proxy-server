@@ -17,15 +17,17 @@ const redis = container.cradle.redis
 const CONSTANTS = container.cradle.constants
 
 const createUser = async data => {
-  const userPassword = await redis.hgetAsync(CONSTANTS.REDIS.AUTH_USER_KEY, data.username)
+  const userPassword = await redis.hGet(CONSTANTS.REDIS.AUTH_USER_KEY, data.username)
   if (userPassword) {
     throw new Error('User with provided username already exists')
   }
   const hashedPassword = await bcrypt.hash(data.password, 10)
-  await redis.hsetAsync(CONSTANTS.REDIS.AUTH_USER_KEY, data.username, hashedPassword)
+  await redis.hSet(CONSTANTS.REDIS.AUTH_USER_KEY, data.username, hashedPassword)
 }
 
 ;(async () => {
+  await redis.connect()
+
   const logo = await figlet('Create user', { font: 'Standard' })
   console.log(chalk.blueBright(logo))
   try {

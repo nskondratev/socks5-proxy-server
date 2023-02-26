@@ -39,12 +39,14 @@ const parseStatsResults = (data, lastLoginData) => {
 }
 
 ;(async () => {
+  await redis.connect()
+
   const logo = await figlet('Proxy server users stats', { font: 'Standard' })
   console.log(chalk.blueBright(logo))
   try {
     let [dataUsage, lastLogin] = await Promise.all([
-      redis.hgetallAsync(CONSTANTS.REDIS.DATA_USAGE_KEY),
-      redis.hgetallAsync(CONSTANTS.REDIS.AUTH_DATE_KEY)
+      redis.hGetAll(CONSTANTS.REDIS.DATA_USAGE_KEY),
+      redis.hGetAll(CONSTANTS.REDIS.AUTH_DATE_KEY)
     ])
     dataUsage = parseStatsResults(dataUsage, lastLogin)
     const table = new Table({

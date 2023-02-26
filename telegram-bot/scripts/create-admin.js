@@ -18,6 +18,8 @@ const createAdmin = async data => {
 
 const main = async () => {
   try {
+    await container.cradle.redis.connect()
+
     const logo = await figlet('Create admin', { font: 'Standard' })
     console.log(chalk.blueBright(logo))
     const answers = await inquirer.prompt([

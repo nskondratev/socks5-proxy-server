@@ -8,19 +8,19 @@ module.exports = container => {
 
   return {
     async isAdmin (username) {
-      return !!parseInt(await redis.hexistsAsync(REDIS.ADMIN_USER_KEY, username))
+      return !!await redis.hExists(REDIS.ADMIN_USER_KEY, username)
     },
 
     async createAdmin (username) {
-      return redis.hsetAsync(REDIS.ADMIN_USER_KEY, username, 1)
+      return redis.hSet(REDIS.ADMIN_USER_KEY, username, 1)
     },
 
     async updateAdminChatId (username, chatId) {
-      return redis.hsetAsync(REDIS.ADMIN_USER_KEY, username, chatId)
+      return redis.hSet(REDIS.ADMIN_USER_KEY, username, chatId)
     },
 
     async deleteAdmin (username) {
-      return redis.hdelAsync(REDIS.ADMIN_USER_KEY, username)
+      return redis.hDel(REDIS.ADMIN_USER_KEY, username)
     },
 
     async getUsersStats () {
@@ -47,40 +47,37 @@ module.exports = container => {
         return users
       }
       let [dataUsage, lastLogin] = await Promise.all([
-        redis.hgetallAsync(REDIS.DATA_USAGE_KEY),
-        redis.hgetallAsync(REDIS.AUTH_DATE_KEY)
+        redis.hGetAll(REDIS.DATA_USAGE_KEY),
+        redis.hGetAll(REDIS.AUTH_DATE_KEY)
       ])
       dataUsage = parseStatsResults(dataUsage, lastLogin)
       return dataUsage
     },
 
     async createUser (username, password) {
-      const userPassword = await redis.hgetAsync(REDIS.AUTH_USER_KEY, username)
+      const userPassword = await redis.hGet(REDIS.AUTH_USER_KEY, username)
       if (userPassword) {
         throw new Error('User with provided username already exists')
       }
       const hashedPassword = await bcrypt.hashAsync(password, 10)
-      await redis.hsetAsync(REDIS.AUTH_USER_KEY, username, hashedPassword)
+      await redis.hSet(REDIS.AUTH_USER_KEY, username, hashedPassword)
     },
 
     async deleteUser (username) {
-      const userPassword = await redis.hgetAsync(REDIS.AUTH_USER_KEY, username)
+      const userPassword = await redis.hGet(REDIS.AUTH_USER_KEY, username)
       if (!userPassword) {
         throw new Error('User with provided username not found')
       }
-      await redis.batch([
-        ['hdel', REDIS.AUTH_USER_KEY, username]
-        // ['hdel', CONSTANTS.REDIS.DATA_USAGE_KEY, username] // Not remove data usage stats
-      ]).execAsync()
+      await redis.hDel(REDIS.AUTH_USER_KEY, username)
     },
 
     async getUserState (username) {
-      const userState = await redis.hgetAsync(REDIS.USER_STATE, username)
+      const userState = await redis.hGet(REDIS.USER_STATE, username)
       return _.isString(userState) ? JSON.parse(userState) : userState
     },
 
     async setUserState (username, state) {
-      return redis.hsetAsync(REDIS.USER_STATE, username, JSON.stringify(state))
+      return redis.hSet(REDIS.USER_STATE, username, JSON.stringify(state))
     },
 
     getChatIdAndUserName (msg) {
@@ -88,11 +85,11 @@ module.exports = container => {
     },
 
     async isUsernameFree (username) {
-      return !parseInt(await redis.hexistsAsync(REDIS.AUTH_USER_KEY, username))
+      return !await redis.hExists(REDIS.AUTH_USER_KEY, username)
     },
 
     async getUsers () {
-      return redis.hkeysAsync(REDIS.AUTH_USER_KEY)
+      return redis.hKeys(REDIS.AUTH_USER_KEY)
     }
   }
 }
