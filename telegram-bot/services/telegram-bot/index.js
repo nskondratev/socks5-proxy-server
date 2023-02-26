@@ -55,7 +55,7 @@ module.exports = container => {
         })
         logger.info(`setWebHookResult = ${setWebHookResult}`)
       }
-      logger.info(`Telegram web hook is set`)
+      logger.info('Telegram web hook is set')
     }
     setWebHook().catch(err => logger.error(err))
   }
@@ -67,7 +67,7 @@ module.exports = container => {
   return {
     bot,
     initCommands () {
-      logger.debug(`initCommands method call`)
+      logger.debug('initCommands method call')
       fs
         .readdirSync(COMMANDS_DIR)
         .filter(filename => filename.endsWith('.js'))
