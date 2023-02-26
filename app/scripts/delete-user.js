@@ -16,16 +16,16 @@ const redis = container.cradle.redis
 const CONSTANTS = container.cradle.constants
 
 const deleteUser = async ({ username }) => {
-  const userPassword = await redis.hgetAsync(CONSTANTS.REDIS.AUTH_USER_KEY, username)
+  const userPassword = await redis.hGet(CONSTANTS.REDIS.AUTH_USER_KEY, username)
   if (!userPassword) {
     throw new Error('User with provided username not found')
   }
-  await redis.batch([
-    ['hdel', CONSTANTS.REDIS.AUTH_USER_KEY, username]
-  ]).execAsync()
+  await redis.hDel(CONSTANTS.REDIS.AUTH_USER_KEY, username)
 }
 
 ;(async () => {
+  await redis.connect()
+
   const logo = await figlet('Delete user', { font: 'Standard' })
   console.log(chalk.blueBright(logo))
   try {

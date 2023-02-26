@@ -15,7 +15,7 @@ module.exports = (container, bot) => {
         await bot.sendMessage(chatId, 'Sorry, this functionality is available only for admin users.')
       } else {
         const dataUsage = await util.getUsersStats()
-        let message = `<b>Data usage by users:</b>\n\n`
+        let message = '<b>Data usage by users:</b>\n\n'
         if (dataUsage.length > 0) {
           dataUsage.forEach(u => {
             message += `<b>${u[0]}.</b> ${u[1]} (${moment(u[4]).fromNow()}): ${u[3]}\n`
@@ -77,7 +77,7 @@ module.exports = (container, bot) => {
         const users = await util.getUsers()
         let message = 'No users.'
         if (users.length) {
-          message = `<b>Users</b>:\n\n`
+          message = '<b>Users</b>:\n\n'
           users.sort().forEach((u, i) => {
             message += `${i + 1}. ${u}\n`
           })
@@ -112,13 +112,13 @@ module.exports = (container, bot) => {
     try {
       const userState = await util.getUserState(username)
       if (_.isNull(userState)) {
-        logger.debug(`User state is idle`)
+        logger.debug('User state is idle')
       } else {
         switch (userState.state) {
           case USER_STATE.IDLE:
             await bot.sendMessage(chatId, 'Enter command')
             break
-          case USER_STATE.CREATE_USER_ENTER_USERNAME:
+          case USER_STATE.CREATE_USER_ENTER_USERNAME: {
             const proxyUsername = msg.text.trim()
             logger.debug(`Entered username: ${proxyUsername}`)
             if (!proxyUsername) {
@@ -144,7 +144,8 @@ module.exports = (container, bot) => {
               }
             }
             break
-          case USER_STATE.CREATE_USER_ENTER_PASSWORD:
+          }
+          case USER_STATE.CREATE_USER_ENTER_PASSWORD: {
             const proxyPassword = msg.text.trim()
             if (!proxyPassword) {
               await bot.sendMessage(chatId, 'Password can not be empty. Enter the new one.')
@@ -155,7 +156,8 @@ module.exports = (container, bot) => {
               await bot.sendMessage(chatId, message, { parse_mode: 'HTML', reply_markup: { remove_keyboard: true } })
             }
             break
-          case USER_STATE.DELETE_USER_ENTER_USERNAME:
+          }
+          case USER_STATE.DELETE_USER_ENTER_USERNAME: {
             const usernameToDelete = msg.text.trim()
             logger.debug(`Entered username: ${usernameToDelete}`)
             if (!await util.isUsernameFree(usernameToDelete)) {
@@ -166,6 +168,7 @@ module.exports = (container, bot) => {
               await bot.sendMessage(chatId, 'User with provided username does not exists. Enter another one.')
             }
             break
+          }
         }
       }
     } catch

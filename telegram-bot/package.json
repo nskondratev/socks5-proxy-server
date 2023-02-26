@@ -1,6 +1,6 @@
 {
   "name": "telegram-bot",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "",
   "main": "app.js",
   "scripts": {
@@ -12,23 +12,23 @@
   "author": "Nikita Kondratev <highflyer16@yandex.ru>",
   "license": "ISC",
   "dependencies": {
-    "awilix": "^4.3.4",
-    "bcrypt": "^5.0.1",
+    "awilix": "^8.0.0",
+    "bcrypt": "^5.1.0",
     "bluebird": "^3.7.2",
-    "chalk": "^4.1.1",
-    "dotenv": "^10.0.0",
-    "figlet": "^1.5.0",
-    "generate-password": "^1.6.1",
-    "inquirer": "^8.1.2",
+    "chalk": "^4.1.2",
+    "dotenv": "^16.0.3",
+    "figlet": "^1.5.2",
+    "generate-password": "^1.7.0",
+    "inquirer": "^8.2.5",
     "lodash": "^4.17.21",
-    "log4js": "^6.3.0",
-    "moment": "^2.29.1",
-    "node-telegram-bot-api": "^0.54.0",
-    "redis": "^3.1.2",
+    "log4js": "^6.8.0",
+    "moment": "^2.29.4",
+    "node-telegram-bot-api": "^0.61.0",
+    "redis": "^4.6.5",
     "socks5-https-client": "^1.2.1"
   },
   "devDependencies": {
-    "nodemon": "^2.0.12",
-    "standard": "^16.0.3"
+    "nodemon": "^2.0.20",
+    "standard": "^17.0.0"
   }
 }

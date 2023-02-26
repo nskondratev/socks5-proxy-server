@@ -1,26 +1,26 @@
 {
   "name": "socks5-proxy",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "",
   "main": "app.js",
   "dependencies": {
-    "awilix": "^4.3.4",
-    "bcrypt": "^5.0.1",
+    "awilix": "^8.0.0",
+    "bcrypt": "^5.1.0",
     "bluebird": "^3.7.2",
-    "chalk": "^4.1.1",
-    "cli-table": "^0.3.6",
-    "dotenv": "^10.0.0",
-    "figlet": "^1.5.0",
-    "inquirer": "^8.1.2",
+    "chalk": "^4.1.2",
+    "cli-table": "^0.3.11",
+    "dotenv": "^16.0.3",
+    "figlet": "^1.5.2",
+    "inquirer": "^8.2.5",
     "lodash": "^4.17.21",
-    "log4js": "^6.3.0",
-    "node-schedule": "^2.0.0",
-    "redis": "^3.1.2",
+    "log4js": "^6.8.0",
+    "node-schedule": "^2.1.1",
+    "redis": "^4.6.5",
     "simple-socks": "git+https://github.com/jfowl/simple-socks.git"
   },
   "devDependencies": {
-    "nodemon": "^2.0.12",
-    "standard": "^16.0.3"
+    "nodemon": "^2.0.20",
+    "standard": "^17.0.0"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
