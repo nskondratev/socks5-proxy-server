@@ -6,6 +6,7 @@ services:
     volumes:
       - ./data/redis:/data
     restart: always
+    # TODO: delete exposing redis ports
     ports:
       - "6379:6379"
     expose:
