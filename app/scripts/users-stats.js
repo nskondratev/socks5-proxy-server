@@ -1,19 +1,21 @@
-const Promise = require('bluebird')
-const figlet = Promise.promisify(require('figlet'))
-const chalk = require('chalk')
-const Table = require('cli-table')
+import fs from 'node:fs'
+import path from 'node:path'
 
-const fs = require('fs')
-const path = require('path')
+import Promise from 'bluebird'
+import chalk from 'chalk'
+import Table from 'cli-table'
+import dotenv from 'dotenv'
+import figlet from 'figlet'
 
-if (fs.existsSync(path.join(__dirname, '..', '.env'))) {
-  require('dotenv').config()
+import redis from '../services/redis.js'
+import { REDIS } from '../services/constants.js'
+import { dirname } from '../utils/dirname.js'
+
+const figletPromise = Promise.promisify(figlet)
+
+if (fs.existsSync(path.join(dirname(import.meta.url), '..', '.env'))) {
+  dotenv.config()
 }
-
-const container = require('../services')
-
-const redis = container.cradle.redis
-const CONSTANTS = container.cradle.constants
 
 const parseStatsResults = (data, lastLoginData) => {
   const users = []
@@ -38,26 +40,28 @@ const parseStatsResults = (data, lastLoginData) => {
   return users
 }
 
-;(async () => {
-  await redis.connect()
+const logo = await figletPromise('Proxy server users stats', { font: 'Standard' })
 
-  const logo = await figlet('Proxy server users stats', { font: 'Standard' })
-  console.log(chalk.blueBright(logo))
-  try {
-    let [dataUsage, lastLogin] = await Promise.all([
-      redis.hGetAll(CONSTANTS.REDIS.DATA_USAGE_KEY),
-      redis.hGetAll(CONSTANTS.REDIS.AUTH_DATE_KEY)
-    ])
-    dataUsage = parseStatsResults(dataUsage, lastLogin)
-    const table = new Table({
-      head: ['#', 'Username', 'Data usage (in bytes)', 'Data usage (human readable)', 'Last login'],
-      colWidths: [4, 30, 30, 30, 30]
-    })
-    table.push(...dataUsage)
-    console.log(table.toString())
-    process.exit(0)
-  } catch (err) {
-    console.log(chalk.red(err))
-    process.exit(1)
-  }
-})()
+console.log(chalk.blueBright(logo))
+
+try {
+  let [dataUsage, lastLogin] = await Promise.all([
+    redis.hGetAll(REDIS.DATA_USAGE_KEY),
+    redis.hGetAll(REDIS.AUTH_DATE_KEY)
+  ])
+
+  dataUsage = parseStatsResults(dataUsage, lastLogin)
+
+  const table = new Table({
+    head: ['#', 'Username', 'Data usage (in bytes)', 'Data usage (human readable)', 'Last login'],
+    colWidths: [4, 30, 30, 30, 30]
+  })
+
+  table.push(...dataUsage)
+
+  console.log(table.toString())
+  process.exit(0)
+} catch (err) {
+  console.log(chalk.red(err))
+  process.exit(1)
+}

@@ -6,6 +6,10 @@ services:
     volumes:
       - ./data/redis:/data
     restart: always
+    ports:
+      - "6379:6379"
+    expose:
+      - "6379"
 
   proxy:
     depends_on:

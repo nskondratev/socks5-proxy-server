@@ -1,53 +1,55 @@
-const Promise = require('bluebird')
-const bcrypt = require('bcrypt')
-const inquirer = require('inquirer')
-const figlet = Promise.promisify(require('figlet'))
-const chalk = require('chalk')
+import { existsSync } from 'node:fs'
+import { join } from 'node:path'
 
-const fs = require('fs')
-const path = require('path')
+import { hash } from 'bcrypt'
+import bluebird from 'bluebird'
+import chalk from 'chalk'
+import dotenv from 'dotenv'
+import figlet from 'figlet'
+import inquirer from 'inquirer'
 
-if (fs.existsSync(path.join(__dirname, '..', '.env'))) {
-  require('dotenv').config()
+import redis from '../services/redis.js'
+import { REDIS } from '../services/constants.js'
+import { dirname } from '../utils/dirname.js'
+
+const figletPromise = bluebird.promisify(figlet)
+
+if (existsSync(join(dirname(import.meta.url), '..', '.env'))) {
+  dotenv.config()
 }
 
-const container = require('../services')
-
-const redis = container.cradle.redis
-const CONSTANTS = container.cradle.constants
-
 const createUser = async data => {
-  const userPassword = await redis.hGet(CONSTANTS.REDIS.AUTH_USER_KEY, data.username)
+  const userPassword = await redis.hGet(REDIS.AUTH_USER_KEY, data.username)
   if (userPassword) {
     throw new Error('User with provided username already exists')
   }
-  const hashedPassword = await bcrypt.hash(data.password, 10)
-  await redis.hSet(CONSTANTS.REDIS.AUTH_USER_KEY, data.username, hashedPassword)
+  const hashedPassword = await hash(data.password, 10)
+  await redis.hSet(REDIS.AUTH_USER_KEY, data.username, hashedPassword)
 }
 
-;(async () => {
-  await redis.connect()
+const logo = await figletPromise('Create user', { font: 'Standard' })
 
-  const logo = await figlet('Create user', { font: 'Standard' })
-  console.log(chalk.blueBright(logo))
-  try {
-    const answers = await inquirer.prompt([
-      {
-        type: 'input',
-        name: 'username',
-        message: 'Input username and press Enter:'
-      },
-      {
-        type: 'password',
-        name: 'password',
-        message: 'Input password and press Enter to create new user:'
-      }
-    ])
-    await createUser(answers)
-    console.log(chalk.green('User successfully created.'))
-    process.exit(0)
-  } catch (err) {
-    console.log(chalk.red(err))
-    process.exit(1)
-  }
-})()
+console.log(chalk.blueBright(logo))
+
+try {
+  const answers = await inquirer.prompt([
+    {
+      type: 'input',
+      name: 'username',
+      message: 'Input username and press Enter:'
+    },
+    {
+      type: 'password',
+      name: 'password',
+      message: 'Input password and press Enter to create new user:'
+    }
+  ])
+
+  await createUser(answers)
+
+  console.log(chalk.green('User successfully created.'))
+  process.exit(0)
+} catch (err) {
+  console.log(chalk.red(err))
+  process.exit(1)
+}
