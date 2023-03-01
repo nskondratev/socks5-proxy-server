@@ -7,48 +7,6 @@ module.exports = (container, bot) => {
   const util = container.util
   const USER_STATE = container.constants.userState
 
-  bot.onText(/\/users_stats(.*)/, async (msg, match) => {
-    const { chatId, username } = util.getChatIdAndUserName(msg)
-    logger.debug(`Received stats request from @${username}`)
-    try {
-      if (!await util.isAdmin(username)) {
-        await bot.sendMessage(chatId, 'Sorry, this functionality is available only for admin users.')
-      } else {
-        const dataUsage = await util.getUsersStats()
-        let message = '<b>Data usage by users:</b>\n\n'
-        if (dataUsage.length > 0) {
-          dataUsage.forEach(u => {
-            message += `<b>${u[0]}.</b> ${u[1]} (${moment(u[4]).fromNow()}): ${u[3]}\n`
-          })
-        } else {
-          message += 'No usage stats.'
-        }
-        await bot.sendMessage(chatId, message, { parse_mode: 'HTML', reply_markup: { remove_keyboard: true } })
-        await util.setUserState(username, { state: USER_STATE.IDLE, data: {} })
-      }
-    } catch (err) {
-      logger.error(err)
-    }
-  })
-
-  bot.onText(/\/create_user(.*)/, async (msg, match) => {
-    const { chatId, username } = util.getChatIdAndUserName(msg)
-    logger.debug(`Received create user request from @${username}`)
-    try {
-      logger.debug(`Match: ${JSON.stringify(match)}`)
-      if (!await util.isAdmin(username)) {
-        await bot.sendMessage(chatId, 'Sorry, this functionality is available only for admin users.')
-      } else {
-        const userState = { state: USER_STATE.CREATE_USER_ENTER_USERNAME, data: {} }
-        await util.setUserState(username, userState)
-        await bot.sendMessage(chatId, 'Enter username for the new proxy user.', { reply_markup: { remove_keyboard: true } })
-      }
-    } catch (err) {
-      logger.error(err)
-      await bot.sendMessage(chatId, err.message)
-    }
-  })
-
   bot.onText(/\/delete_user(.*)/, async (msg, match) => {
     const { chatId, username } = util.getChatIdAndUserName(msg)
     logger.debug(`Received create user request from @${username}`)

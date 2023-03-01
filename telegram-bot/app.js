@@ -1,15 +1,13 @@
-try {
-  process.chdir(__dirname)
-} catch (err) {
-  console.log('Failed to change cwd:', err)
-  process.exit(1)
-}
+import fs from 'node:fs'
+import path from 'node:path'
 
-const fs = require('fs')
-const path = require('path')
+import dotenv from 'dotenv'
 
-if (fs.existsSync(path.join(__dirname, '.env'))) {
-  require('dotenv').config()
+import packageJSON from './package.json' assert { type: 'json' }
+import { dirname } from './utils/dirname.js'
+
+if (fs.existsSync(path.join(dirname(import.meta.url), '.env'))) {
+  dotenv.config()
 }
 const container = require('./services')
 
@@ -17,7 +15,7 @@ const logger = container.cradle.logger.get()
 
 container.cradle.redis.connect()
   .then(() => {
-    logger.info(`Start proxy telegram bot. Version: ${require('./package.json').version}`)
+    logger.info(`Start proxy telegram bot. Version: ${packageJSON.version}`)
 
     container.cradle.telegramBot.initCommands()
   })

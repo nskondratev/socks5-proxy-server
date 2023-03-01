@@ -12,7 +12,6 @@
     "dotenv": "^16.0.3",
     "figlet": "^1.5.2",
     "inquirer": "^9.1.4",
-    "lodash": "^4.17.21",
     "log4js": "^6.8.0",
     "node-schedule": "^2.1.1",
     "redis": "^4.6.5",
