@@ -3,22 +3,18 @@ import path from 'node:path'
 
 import dotenv from 'dotenv'
 
-import packageJSON from './package.json' assert { type: 'json' }
+import logger from './services/logger.js'
+import { client as redis, Store } from './services/redis.js'
+import { Bot } from './services/bot.js'
 import { dirname } from './services/utils.js'
 
 if (fs.existsSync(path.join(dirname(import.meta.url), '.env'))) {
   dotenv.config()
 }
-const container = require('./services')
 
-const logger = container.cradle.logger.get()
+const store = new Store(redis)
 
-container.cradle.redis.connect()
-  .then(() => {
-    logger.info(`Start proxy telegram bot. Version: ${packageJSON.version}`)
+const bot = new Bot(store, logger)
+bot.run()
 
-    container.cradle.telegramBot.initCommands()
-  })
-  .catch(err => {
-    logger.error(`Failed to connect to Redis: ${err}`)
-  })
+logger.info('Start proxy telegram bot')
