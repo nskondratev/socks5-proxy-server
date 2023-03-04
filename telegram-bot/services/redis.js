@@ -8,9 +8,11 @@ import { REDIS } from './constants.js'
 const bcryptPromise = Promise.promisifyAll(bcrypt)
 
 const redisClient = createClient({
-  host: process.env.REDIS_HOST,
-  port: process.env.REDIS_PORT,
-  db: process.env.REDIS_DB
+  socket: {
+    host: process.env.REDIS_HOST,
+    port: process.env.REDIS_PORT,
+  },
+  database: process.env.REDIS_DB
 })
 
 export const client = await redisClient.connect().then(() => redisClient)
