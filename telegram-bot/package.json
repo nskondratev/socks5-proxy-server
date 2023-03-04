@@ -13,7 +13,6 @@
   "author": "Nikita Kondratev <highflyer16@yandex.ru>",
   "license": "ISC",
   "dependencies": {
-    "awilix": "^8.0.0",
     "bcrypt": "^5.1.0",
     "bluebird": "^3.7.2",
     "chalk": "^5.2.0",
