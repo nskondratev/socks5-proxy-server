@@ -6,7 +6,6 @@ import dotenv from 'dotenv'
 import { scheduleJob } from 'node-schedule'
 import simpleSocks from 'simple-socks'
 
-import packageJSON from './package.json' assert { type: 'json' }
 import { dirname } from './services/utils.js'
 import { REDIS } from './services/constants.js'
 import logger from './services/logger.js'
@@ -16,7 +15,7 @@ if (existsSync(join(dirname(import.meta.url), '.env'))) {
   dotenv.config()
 }
 
-logger.info(`Start simple socks5 proxy server. Version: ${packageJSON.version}`)
+logger.info('Start simple socks5 proxy server')
 
 const socksServerOptions = {}
 
@@ -42,7 +41,6 @@ if (parseInt(process.env.REQUIRE_AUTH) === 1) {
       } else {
         return handleError(new Error('Incorrect password'))
       }
-
     } catch (err) {
       handleError(err)
     }
