@@ -3,8 +3,8 @@ import path from 'node:path'
 import TelegramBot from 'node-telegram-bot-api'
 import Socks5AgentClass from 'socks5-https-client/lib/Agent'
 
-import { dirname } from '../utils/utils.js'
-import initCommands from './bot-commands/commands.js'
+import { dirname } from './utils.js'
+import initCommands from './commands.js'
 
 export class TelegramBot {
     #store

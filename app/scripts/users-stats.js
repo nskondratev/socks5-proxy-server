@@ -9,7 +9,7 @@ import figlet from 'figlet'
 
 import redis from '../services/redis.js'
 import { REDIS } from '../services/constants.js'
-import { dirname } from '../utils/dirname.js'
+import { dirname } from '../services/utils.js'
 
 const figletPromise = Promise.promisify(figlet)
 

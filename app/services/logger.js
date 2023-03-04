@@ -2,7 +2,7 @@ import { join } from 'node:path'
 
 import log4js from 'log4js'
 
-import { dirname } from '../utils/dirname.js'
+import { dirname } from '../services/utils.js'
 
 const logger = log4js.getLogger()
 

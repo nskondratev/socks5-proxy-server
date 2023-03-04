@@ -7,7 +7,7 @@ import { scheduleJob } from 'node-schedule'
 import simpleSocks from 'simple-socks'
 
 import packageJSON from './package.json' assert { type: 'json' }
-import { dirname } from './utils/dirname.js'
+import { dirname } from './services/utils.js'
 import { REDIS } from './services/constants.js'
 import logger from './services/logger.js'
 import redis from './services/redis.js'

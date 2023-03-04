@@ -4,7 +4,7 @@ import path from 'node:path'
 import dotenv from 'dotenv'
 
 import packageJSON from './package.json' assert { type: 'json' }
-import { dirname } from './utils/dirname.js'
+import { dirname } from './services/utils.js'
 
 if (fs.existsSync(path.join(dirname(import.meta.url), '.env'))) {
   dotenv.config()
