@@ -2,22 +2,17 @@ version: '3'
 
 services:
   redis:
-    image: redis:7.0.8-alpine
+    image: redis:7.0.9-alpine
     volumes:
       - ./data/redis:/data
     restart: always
-    # TODO: delete exposing redis ports
-    ports:
-      - "6379:6379"
-    expose:
-      - "6379"
 
   proxy:
     depends_on:
       - redis
-    build: ./app
+    build: ./proxy
     volumes:
-      - ./app:/app
+      - ./proxy:/app
       - /app/node_modules
     environment:
       APP_PORT: ${APP_PORT}
