@@ -1,25 +1,24 @@
 {
   "name": "socks5-proxy",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "description": "",
-  "main": "app.js",
+  "type": "module",
+  "exports": "./app.js",
   "dependencies": {
-    "awilix": "^8.0.0",
     "bcrypt": "^5.1.0",
     "bluebird": "^3.7.2",
-    "chalk": "^4.1.2",
+    "chalk": "^5.2.0",
     "cli-table": "^0.3.11",
     "dotenv": "^16.0.3",
     "figlet": "^1.5.2",
-    "inquirer": "^8.2.5",
-    "lodash": "^4.17.21",
+    "inquirer": "^9.1.4",
     "log4js": "^6.8.0",
     "node-schedule": "^2.1.1",
     "redis": "^4.6.5",
     "simple-socks": "git+https://github.com/jfowl/simple-socks.git"
   },
   "devDependencies": {
-    "nodemon": "^2.0.20",
+    "nodemon": "^2.0.21",
     "standard": "^17.0.0"
   },
   "scripts": {

@@ -49,6 +49,11 @@ docker exec -it socks5-proxy-server-proxy-1 sh -c 'exec node scripts/users-stats
 docker exec -it socks5-proxy-server-telegram_bot-1 sh -c 'exec node scripts/create-admin.js' 
 ```
 
+You also can delete admin via script, if you need:
+```bash
+docker exec -it socks5-proxy-server-telegram_bot-1 sh -c 'exec node scripts/delete-admin.js' 
+```
+
 ### Available commands
 - `/users_stats` - show data usage statistics per user
 - `/create_user` - create new proxy user

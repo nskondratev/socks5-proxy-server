@@ -18,7 +18,7 @@ if (fs.existsSync(path.join(dirname(import.meta.url), '..', '.env'))) {
 
 const store = new Store(redis)
 
-const logo = await figletPromise('Create admin', { font: 'Standard' })
+const logo = await figletPromise('Delete admin', { font: 'Standard' })
 
 console.log(chalk.blueBright(logo))
 
@@ -31,9 +31,9 @@ try {
     }
   ])
 
-  await store.createAdmin(answers.username)
+  await store.deleteAdmin(answers.username)
 
-  console.log(chalk.green('Admin successfully created.'))
+  console.log(chalk.green('Admin successfully deleted.'))
   process.exit(0)
 } catch (err) {
   console.log(chalk.red(err))

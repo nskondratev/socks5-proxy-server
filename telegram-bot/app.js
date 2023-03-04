@@ -1,26 +1,20 @@
-try {
-  process.chdir(__dirname)
-} catch (err) {
-  console.log('Failed to change cwd:', err)
-  process.exit(1)
+import fs from 'node:fs'
+import path from 'node:path'
+
+import dotenv from 'dotenv'
+
+import logger from './services/logger.js'
+import { client as redis, Store } from './services/redis.js'
+import { Bot } from './services/bot.js'
+import { dirname } from './services/utils.js'
+
+if (fs.existsSync(path.join(dirname(import.meta.url), '.env'))) {
+  dotenv.config()
 }
 
-const fs = require('fs')
-const path = require('path')
+const store = new Store(redis)
 
-if (fs.existsSync(path.join(__dirname, '.env'))) {
-  require('dotenv').config()
-}
-const container = require('./services')
+const bot = new Bot(store, logger)
+bot.run()
 
-const logger = container.cradle.logger.get()
-
-container.cradle.redis.connect()
-  .then(() => {
-    logger.info(`Start proxy telegram bot. Version: ${require('./package.json').version}`)
-
-    container.cradle.telegramBot.initCommands()
-  })
-  .catch(err => {
-    logger.error(`Failed to connect to Redis: ${err}`)
-  })
+logger.info('Start proxy telegram bot')
