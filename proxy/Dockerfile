@@ -1,4 +1,4 @@
-FROM node:18.14.2
+FROM node:18.16.0
 
 ADD . /app
 
