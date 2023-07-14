@@ -19,7 +19,7 @@
     "dotenv": "^16.0.3",
     "figlet": "^1.5.2",
     "generate-password": "^1.7.0",
-    "inquirer": "^9.1.4",
+    "inquirer": "^9.2.8",
     "lodash": "^4.17.21",
     "log4js": "^6.8.0",
     "moment": "^2.29.4",
@@ -28,7 +28,7 @@
     "socks5-https-client": "^1.2.1"
   },
   "devDependencies": {
-    "nodemon": "^2.0.21",
-    "standard": "^17.0.0"
+    "nodemon": "^3.0.1",
+    "standard": "^17.1.0"
   }
 }

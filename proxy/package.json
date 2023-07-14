@@ -7,19 +7,19 @@
   "dependencies": {
     "bcrypt": "^5.1.0",
     "bluebird": "^3.7.2",
-    "chalk": "^5.2.0",
+    "chalk": "^5.3.0",
     "cli-table": "^0.3.11",
-    "dotenv": "^16.0.3",
-    "figlet": "^1.5.2",
-    "inquirer": "^9.1.4",
-    "log4js": "^6.8.0",
+    "dotenv": "^16.3.1",
+    "figlet": "^1.6.0",
+    "inquirer": "^9.2.8",
+    "log4js": "^6.9.1",
     "node-schedule": "^2.1.1",
-    "redis": "^4.6.5",
+    "redis": "^4.6.7",
     "simple-socks": "git+https://github.com/jfowl/simple-socks.git"
   },
   "devDependencies": {
-    "nodemon": "^2.0.21",
-    "standard": "^17.0.0"
+    "nodemon": "^3.0.1",
+    "standard": "^17.1.0"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
