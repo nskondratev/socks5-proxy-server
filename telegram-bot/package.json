@@ -1,6 +1,6 @@
 {
   "name": "telegram-bot",
-  "version": "1.10.0",
+  "version": "1.11.0",
   "description": "",
   "type": "module",
   "exports": "./app.js",
@@ -19,12 +19,12 @@
     "dotenv": "^16.3.1",
     "figlet": "^1.6.0",
     "generate-password": "^1.7.0",
-    "inquirer": "^9.2.10",
+    "inquirer": "^9.2.11",
     "lodash": "^4.17.21",
     "log4js": "^6.9.1",
     "moment": "^2.29.4",
-    "node-telegram-bot-api": "^0.61.0",
-    "redis": "^4.6.8",
+    "node-telegram-bot-api": "^0.63.0",
+    "redis": "^4.6.10",
     "socks5-https-client": "^1.2.1"
   },
   "devDependencies": {
