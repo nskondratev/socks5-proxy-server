@@ -1,6 +1,6 @@
 {
   "name": "socks5-proxy",
-  "version": "1.11.0",
+  "version": "1.12.0",
   "description": "",
   "type": "module",
   "exports": "./app.js",
