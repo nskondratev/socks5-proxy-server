@@ -16,19 +16,19 @@
     "bcrypt": "^5.1.1",
     "bluebird": "^3.7.2",
     "chalk": "^5.2.0",
-    "dotenv": "^16.3.1",
+    "dotenv": "^16.4.5",
     "figlet": "^1.7.0",
     "generate-password": "^1.7.1",
-    "inquirer": "^9.2.12",
+    "inquirer": "^9.2.15",
     "lodash": "^4.17.21",
     "log4js": "^6.9.1",
     "moment": "^2.30.1",
-    "node-telegram-bot-api": "^0.64.0",
-    "redis": "^4.6.12",
+    "node-telegram-bot-api": "^0.63.0",
+    "redis": "^4.6.13",
     "socks5-https-client": "^1.2.1"
   },
   "devDependencies": {
-    "nodemon": "^3.0.2",
+    "nodemon": "^3.1.0",
     "standard": "^17.1.0"
   }
 }
