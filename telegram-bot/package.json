@@ -1,6 +1,6 @@
 {
   "name": "telegram-bot",
-  "version": "1.19.0",
+  "version": "1.20.0",
   "description": "",
   "type": "module",
   "exports": "./app.js",
@@ -15,20 +15,20 @@
   "dependencies": {
     "bcrypt": "^6.0.0",
     "bluebird": "^3.7.2",
-    "chalk": "^5.4.1",
-    "dotenv": "^17.2.0",
-    "figlet": "^1.8.2",
+    "chalk": "^5.6.2",
+    "dotenv": "^17.2.3",
+    "figlet": "^1.9.4",
     "generate-password": "^1.7.1",
-    "inquirer": "^12.7.0",
+    "inquirer": "^13.0.1",
     "lodash": "^4.17.21",
     "log4js": "^6.9.1",
     "moment": "^2.30.1",
     "node-telegram-bot-api": "^0.66.0",
-    "redis": "^5.6.0",
+    "redis": "^5.10.0",
     "socks5-https-client": "^1.2.1"
   },
   "devDependencies": {
-    "nodemon": "^3.1.10",
+    "nodemon": "^3.1.11",
     "standard": "^17.1.2"
   }
 }
