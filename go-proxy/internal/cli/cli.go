@@ -5,11 +5,18 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/nskondratev/socks5-proxy-server/internal/cli/commands/stats"
 	"github.com/nskondratev/socks5-proxy-server/internal/config"
 	"github.com/nskondratev/socks5-proxy-server/internal/log"
 )
 
-type CLICommandsDeps struct{}
+type redis interface {
+	HGetAll(ctx context.Context, key string) (map[string]string, error)
+}
+
+type CLICommandsDeps struct {
+	Redis redis
+}
 
 type commandHandler interface {
 	CanHandle(ctx context.Context, commandName string) bool
@@ -28,7 +35,9 @@ func HandleCLICommand(ctx context.Context, deps *CLICommandsDeps) (handled bool)
 
 	fmt.Printf("In CLI command mode, process command with name: %s\n", commandName)
 
-	commands := []commandHandler{}
+	commands := []commandHandler{
+		stats.New(deps.Redis, os.Stdout),
+	}
 
 	for i := range commands {
 		if commands[i].CanHandle(ctx, commandName) {

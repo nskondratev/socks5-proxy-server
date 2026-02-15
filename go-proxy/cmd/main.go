@@ -27,7 +27,7 @@ func main() {
 	usersService := users.New(redisCli)
 
 	// Handle CLI commands, if passed
-	if handled := cli.HandleCLICommand(ctx, &cli.CLICommandsDeps{}); handled {
+	if handled := cli.HandleCLICommand(ctx, &cli.CLICommandsDeps{Redis: redisCli}); handled {
 		return
 	}
 
