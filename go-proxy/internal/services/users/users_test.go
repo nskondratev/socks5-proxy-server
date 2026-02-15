@@ -8,8 +8,9 @@ import (
 )
 
 type redisStub struct {
-	hgetFn func(ctx context.Context, key, field string) (string, error)
-	hsetFn func(ctx context.Context, key string, values ...interface{}) error
+	hgetFn    func(ctx context.Context, key, field string) (string, error)
+	hsetFn    func(ctx context.Context, key string, values ...interface{}) error
+	hincrByFn func(ctx context.Context, key, field string, incr int64) error
 }
 
 func (r *redisStub) HGet(ctx context.Context, key, field string) (string, error) {
@@ -18,6 +19,10 @@ func (r *redisStub) HGet(ctx context.Context, key, field string) (string, error)
 
 func (r *redisStub) HSet(ctx context.Context, key string, values ...interface{}) error {
 	return r.hsetFn(ctx, key, values...)
+}
+
+func (r *redisStub) HIncrBy(ctx context.Context, key, field string, incr int64) error {
+	return r.hincrByFn(ctx, key, field, incr)
 }
 
 func TestGetPasswordHash(t *testing.T) {
@@ -130,6 +135,57 @@ func TestUpdateLastAuthDate(t *testing.T) {
 		err := u.UpdateLastAuthDate(context.Background(), "alice")
 		if err == nil {
 			t.Fatal("UpdateLastAuthDate() expected error, got nil")
+		}
+	})
+}
+
+func TestIncreaseDataUsage(t *testing.T) {
+	t.Parallel()
+
+	t.Run("success", func(t *testing.T) {
+		t.Parallel()
+
+		var (
+			gotKey   string
+			gotField string
+			gotIncr  int64
+		)
+
+		u := New(&redisStub{hincrByFn: func(_ context.Context, key, field string, incr int64) error {
+			gotKey = key
+			gotField = field
+			gotIncr = incr
+			return nil
+		}})
+
+		err := u.IncreaseDataUsage(context.Background(), "alice", 512)
+		if err != nil {
+			t.Fatalf("IncreaseDataUsage() unexpected error: %v", err)
+		}
+
+		if gotKey != userUsageDataKey {
+			t.Fatalf("HIncrBy key = %q, want %q", gotKey, userUsageDataKey)
+		}
+
+		if gotField != "alice" {
+			t.Fatalf("HIncrBy field = %q, want alice", gotField)
+		}
+
+		if gotIncr != 512 {
+			t.Fatalf("HIncrBy incr = %d, want 512", gotIncr)
+		}
+	})
+
+	t.Run("redis error", func(t *testing.T) {
+		t.Parallel()
+
+		u := New(&redisStub{hincrByFn: func(_ context.Context, _, _ string, _ int64) error {
+			return errors.New("write failed")
+		}})
+
+		err := u.IncreaseDataUsage(context.Background(), "alice", 512)
+		if err == nil {
+			t.Fatal("IncreaseDataUsage() expected error, got nil")
 		}
 	})
 }

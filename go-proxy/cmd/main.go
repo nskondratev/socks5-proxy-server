@@ -2,8 +2,8 @@ package main
 
 import (
 	"context"
-	"io"
 	"log"
+	"net"
 	"os"
 
 	"github.com/things-go/go-socks5"
@@ -41,13 +41,27 @@ func main() {
 		},
 	)
 
+	dialer := &net.Dialer{}
+
 	// Create a SOCKS5 server
 	server := socks5.NewServer(
 		socks5.WithLogger(socks5.NewLogger(log.New(os.Stdout, "socks5: ", log.LstdFlags))),
-		socks5.WithConnectMiddleware(func(ctx context.Context, writer io.Writer, request *socks5.Request) error {
-			log.Println("new connection")
+		socks5.WithDialAndRequest(func(ctx context.Context, network, addr string, request *socks5.Request) (net.Conn, error) {
+			conn, err := dialer.DialContext(ctx, network, addr)
+			if err != nil {
+				return nil, err
+			}
 
-			return nil
+			username, ok := getUsernameFromRequest(request)
+			if !ok {
+				return conn, nil
+			}
+
+			return proxy.NewUsageTrackedConn(conn, func(dataLen int64) {
+				if err := usersService.IncreaseDataUsage(ctx, username, dataLen); err != nil {
+					log.Printf("failed to increase data usage for user %s: %s", username, err.Error())
+				}
+			}), nil
 		}),
 		socks5.WithCredential(authCredentialValidator),
 	)
@@ -56,4 +70,21 @@ func main() {
 	if err := server.ListenAndServe("tcp", ":8000"); err != nil {
 		panic(err)
 	}
+}
+
+func getUsernameFromRequest(request *socks5.Request) (string, bool) {
+	if request == nil || request.AuthContext == nil || request.AuthContext.Payload == nil {
+		return "", false
+	}
+
+	username, ok := request.AuthContext.Payload["Username"]
+	if !ok || username == "" {
+		username = request.AuthContext.Payload["username"]
+	}
+
+	if username == "" {
+		return "", false
+	}
+
+	return username, true
 }

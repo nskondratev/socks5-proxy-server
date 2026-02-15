@@ -39,3 +39,7 @@ func (r *Redis) HSet(ctx context.Context, key string, values ...interface{}) err
 func (r *Redis) HDel(ctx context.Context, key string, fields ...string) error {
 	return r.cli.HDel(ctx, key, fields...).Err()
 }
+
+func (r *Redis) HIncrBy(ctx context.Context, key, field string, incr int64) error {
+	return r.cli.HIncrBy(ctx, key, field, incr).Err()
+}
