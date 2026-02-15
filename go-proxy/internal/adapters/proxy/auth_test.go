@@ -101,14 +101,16 @@ func TestAuthWithCache_Valid(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name     string
-		user     string
-		password string
-		setup    func(t *testing.T, cache *CacheMock, validator *AuthValidatorMock)
-		want     bool
+		name            string
+		user            string
+		password        string
+		setup           func(t *testing.T, cache *CacheMock, validator *AuthValidatorMock)
+		want            bool
+		wantUpdates     int
+		wantUpdatedUser string
 	}{
 		{
-			name:     "cache hit",
+			name:     "cache hit invalid credentials",
 			user:     "alice",
 			password: "cached",
 			setup: func(t *testing.T, cache *CacheMock, _ *AuthValidatorMock) {
@@ -118,10 +120,11 @@ func TestAuthWithCache_Valid(t *testing.T) {
 					Expect(AuthCacheKey{user: "alice", password: "cached"}).
 					Return(false, true)
 			},
-			want: false,
+			want:        false,
+			wantUpdates: 0,
 		},
 		{
-			name:     "cache miss",
+			name:     "cache miss valid credentials",
 			user:     "bob",
 			password: "fresh",
 			setup: func(t *testing.T, cache *CacheMock, validator *AuthValidatorMock) {
@@ -137,7 +140,24 @@ func TestAuthWithCache_Valid(t *testing.T) {
 				cache.AddMock.
 					Expect(key, true)
 			},
-			want: true,
+			want:            true,
+			wantUpdates:     1,
+			wantUpdatedUser: "bob",
+		},
+		{
+			name:     "cache hit valid credentials",
+			user:     "eve",
+			password: "cached-ok",
+			setup: func(t *testing.T, cache *CacheMock, _ *AuthValidatorMock) {
+				t.Helper()
+
+				cache.GetMock.
+					Expect(AuthCacheKey{user: "eve", password: "cached-ok"}).
+					Return(true, true)
+			},
+			want:            true,
+			wantUpdates:     1,
+			wantUpdatedUser: "eve",
 		},
 	}
 
@@ -150,10 +170,24 @@ func TestAuthWithCache_Valid(t *testing.T) {
 			validator := NewAuthValidatorMock(t)
 			tt.setup(t, cache, validator)
 
-			auth := NewAuthWithCache(cache, validator)
+			updatedCount := 0
+			updatedUser := ""
+			auth := NewAuthWithCache(cache, validator, func(user string) {
+				updatedCount++
+				updatedUser = user
+			})
+
 			got := auth.Valid(tt.user, tt.password, "ignored")
 			if got != tt.want {
 				t.Fatalf("Valid() = %v, want %v", got, tt.want)
+			}
+
+			if updatedCount != tt.wantUpdates {
+				t.Fatalf("onSuccessfulAuth calls = %d, want %d", updatedCount, tt.wantUpdates)
+			}
+
+			if tt.wantUpdatedUser != "" && updatedUser != tt.wantUpdatedUser {
+				t.Fatalf("updated user = %q, want %q", updatedUser, tt.wantUpdatedUser)
 			}
 		})
 	}

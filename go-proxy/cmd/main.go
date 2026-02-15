@@ -34,6 +34,11 @@ func main() {
 	authCredentialValidator := proxy.NewAuthWithCache(
 		cache.NewExpirableLRU[proxy.AuthCacheKey, bool](config.AuthCacheMaxSize(), config.AuthCacheTTL()),
 		proxy.NewAuth(usersService, passwords),
+		func(user string) {
+			if err := usersService.UpdateLastAuthDate(ctx, user); err != nil {
+				log.Printf("failed to update auth date for user %s: %s", user, err.Error())
+			}
+		},
 	)
 
 	// Create a SOCKS5 server

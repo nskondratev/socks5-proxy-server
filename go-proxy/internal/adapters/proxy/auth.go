@@ -67,12 +67,14 @@ type cache interface {
 type AuthWithCache struct {
 	cache cache
 	authValidator
+	onSuccessfulAuth func(user string)
 }
 
-func NewAuthWithCache(cache cache, authValidator authValidator) *AuthWithCache {
+func NewAuthWithCache(cache cache, authValidator authValidator, onSuccessfulAuth func(user string)) *AuthWithCache {
 	return &AuthWithCache{
-		cache:         cache,
-		authValidator: authValidator,
+		cache:            cache,
+		authValidator:    authValidator,
+		onSuccessfulAuth: onSuccessfulAuth,
 	}
 }
 
@@ -81,12 +83,20 @@ func (a *AuthWithCache) Valid(user, password, _ string) bool {
 
 	cachedValue, ok := a.cache.Get(entryCacheKey)
 	if ok {
+		if cachedValue && a.onSuccessfulAuth != nil {
+			a.onSuccessfulAuth(user)
+		}
+
 		return cachedValue
 	}
 
 	calculatedValue := a.authValidator.Valid(user, password, "")
 
 	a.cache.Add(entryCacheKey, calculatedValue)
+
+	if calculatedValue && a.onSuccessfulAuth != nil {
+		a.onSuccessfulAuth(user)
+	}
 
 	return calculatedValue
 }

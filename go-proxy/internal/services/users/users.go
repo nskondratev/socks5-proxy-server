@@ -3,12 +3,17 @@ package users
 import (
 	"context"
 	"fmt"
+	"time"
 )
 
 const userAuthKey = "user_auth"
+const userAuthDateKey = "user_auth_date"
+
+const jsISOStringLayout = "2006-01-02T15:04:05.000Z"
 
 type redis interface {
 	HGet(ctx context.Context, key, field string) (string, error)
+	HSet(ctx context.Context, key string, values ...interface{}) error
 }
 
 type Users struct {
@@ -26,4 +31,12 @@ func (u *Users) GetPasswordHash(ctx context.Context, userName string) (string, e
 	}
 
 	return pswd, nil
+}
+
+func (u *Users) UpdateLastAuthDate(ctx context.Context, userName string) error {
+	if err := u.redis.HSet(ctx, userAuthDateKey, userName, time.Now().UTC().Format(jsISOStringLayout)); err != nil {
+		return fmt.Errorf("[users] failed to update auth date: %w", err)
+	}
+
+	return nil
 }
