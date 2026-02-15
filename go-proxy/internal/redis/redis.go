@@ -27,3 +27,7 @@ func (r *Redis) Close() error {
 func (r *Redis) HGet(ctx context.Context, key, field string) (string, error) {
 	return r.cli.HGet(ctx, key, field).Result()
 }
+
+func (r *Redis) HSet(ctx context.Context, key, field string, value any) error {
+	return r.cli.HSet(ctx, key, field, value).Err()
+}

@@ -3,12 +3,15 @@ package users
 import (
 	"context"
 	"fmt"
+	"time"
 )
 
 const userAuthKey = "user_auth"
+const userAuthDateKey = "user_auth_date"
 
 type redis interface {
 	HGet(ctx context.Context, key, field string) (string, error)
+	HSet(ctx context.Context, key, field string, value any) error
 }
 
 type Users struct {
@@ -26,4 +29,12 @@ func (u *Users) GetPasswordHash(ctx context.Context, userName string) (string, e
 	}
 
 	return pswd, nil
+}
+
+func (u *Users) SetLastAuthDate(ctx context.Context, userName string, t time.Time) error {
+	if err := u.redis.HSet(ctx, userAuthDateKey, userName, t.UTC().Format(time.RFC3339)); err != nil {
+		return fmt.Errorf("[users] failed to set last auth date: %w", err)
+	}
+
+	return nil
 }

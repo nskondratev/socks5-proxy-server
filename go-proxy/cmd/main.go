@@ -21,6 +21,15 @@ func main() {
 	passwords := password.New()
 
 	usersService := users.New(redisCli)
+	lastAuthDateQueue := make(chan proxy.LastAuthDate, 100)
+	go func() {
+		ctx := context.Background()
+		for item := range lastAuthDateQueue {
+			if err := usersService.SetLastAuthDate(ctx, item.UserName, item.Time); err != nil {
+				log.Printf("failed to set last auth date for user %s: %s", item.UserName, err.Error())
+			}
+		}
+	}()
 
 	// Create a SOCKS5 server
 	server := socks5.NewServer(
@@ -30,7 +39,7 @@ func main() {
 
 			return nil
 		}),
-		socks5.WithCredential(proxy.NewAuth(usersService, passwords)),
+		socks5.WithCredential(proxy.NewAuth(usersService, passwords, proxy.NewLastAuthDateQueue(lastAuthDateQueue))),
 	)
 
 	// Create SOCKS5 proxy on localhost port 8000
