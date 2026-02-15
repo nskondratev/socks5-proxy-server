@@ -5,13 +5,18 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/nskondratev/socks5-proxy-server/internal/cli/commands/createuser"
+	"github.com/nskondratev/socks5-proxy-server/internal/cli/commands/deleteuser"
 	"github.com/nskondratev/socks5-proxy-server/internal/cli/commands/stats"
 	"github.com/nskondratev/socks5-proxy-server/internal/config"
 	"github.com/nskondratev/socks5-proxy-server/internal/log"
 )
 
 type redis interface {
+	HGet(ctx context.Context, key, field string) (string, error)
 	HGetAll(ctx context.Context, key string) (map[string]string, error)
+	HSet(ctx context.Context, key string, values ...interface{}) error
+	HDel(ctx context.Context, key string, fields ...string) error
 }
 
 type CLICommandsDeps struct {
@@ -36,6 +41,8 @@ func HandleCLICommand(ctx context.Context, deps *CLICommandsDeps) (handled bool)
 	fmt.Printf("In CLI command mode, process command with name: %s\n", commandName)
 
 	commands := []commandHandler{
+		createuser.New(deps.Redis, os.Stdin, os.Stdout),
+		deleteuser.New(deps.Redis, os.Stdin, os.Stdout),
 		stats.New(deps.Redis, os.Stdout),
 	}
 
@@ -46,6 +53,8 @@ func HandleCLICommand(ctx context.Context, deps *CLICommandsDeps) (handled bool)
 
 				return handled
 			}
+
+			return handled
 		}
 	}
 

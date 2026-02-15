@@ -35,3 +35,7 @@ func (r *Redis) HGetAll(ctx context.Context, key string) (map[string]string, err
 func (r *Redis) HSet(ctx context.Context, key string, values ...interface{}) error {
 	return r.cli.HSet(ctx, key, values...).Err()
 }
+
+func (r *Redis) HDel(ctx context.Context, key string, fields ...string) error {
+	return r.cli.HDel(ctx, key, fields...).Err()
+}
