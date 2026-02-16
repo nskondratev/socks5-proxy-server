@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/nskondratev/socks5-proxy-server/internal/cli/commands/createadmin"
 	"github.com/nskondratev/socks5-proxy-server/internal/cli/commands/createuser"
+	"github.com/nskondratev/socks5-proxy-server/internal/cli/commands/deleteadmin"
 	"github.com/nskondratev/socks5-proxy-server/internal/cli/commands/deleteuser"
 	"github.com/nskondratev/socks5-proxy-server/internal/cli/commands/stats"
 	"github.com/nskondratev/socks5-proxy-server/internal/config"
@@ -41,7 +43,9 @@ func HandleCLICommand(ctx context.Context, deps *CLICommandsDeps) (handled bool)
 	fmt.Printf("In CLI command mode, process command with name: %s\n", commandName)
 
 	commands := []commandHandler{
+		createadmin.New(deps.Redis, os.Stdin, os.Stdout),
 		createuser.New(deps.Redis, os.Stdin, os.Stdout),
+		deleteadmin.New(deps.Redis, os.Stdin, os.Stdout),
 		deleteuser.New(deps.Redis, os.Stdin, os.Stdout),
 		stats.New(deps.Redis, os.Stdout),
 	}
