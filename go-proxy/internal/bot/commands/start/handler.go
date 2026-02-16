@@ -1,20 +1,46 @@
 package start
 
 import (
+	"context"
+	"fmt"
+
 	tele "gopkg.in/telebot.v3"
+
+	"github.com/nskondratev/socks5-proxy-server/internal/bot"
+	"github.com/nskondratev/socks5-proxy-server/internal/bot/store"
 )
 
 const (
 	Command = "/start"
 )
 
-type Handler struct{}
-
-func New() *Handler {
-	return &Handler{}
+type userStateSetter interface {
+	SetUserState(ctx context.Context, username string, state store.UserState) error
+	UpdateAdminChatID(ctx context.Context, username string, chatID int64) error
 }
 
+type Handler struct{ store userStateSetter }
+
+func New(store userStateSetter) *Handler { return &Handler{store: store} }
+
 func (h *Handler) Handle(c tele.Context) error {
-	// TODO: implement logic here
-	panic("not implemented")
+	sender := c.Sender()
+	if sender == nil || sender.Username == "" {
+		return nil
+	}
+
+	ctx := bot.GetContext(c)
+	if err := h.store.SetUserState(ctx, sender.Username, store.UserState{State: store.StateIdle, Data: map[string]string{}}); err != nil {
+		return fmt.Errorf("failed to save user state: %w", err)
+	}
+
+	if err := c.Send("Hello! You can manage proxy server."); err != nil {
+		return fmt.Errorf("failed to send message: %w", err)
+	}
+
+	if err := h.store.UpdateAdminChatID(ctx, sender.Username, c.Chat().ID); err != nil {
+		return fmt.Errorf("failed to update admin chat id: %w", err)
+	}
+
+	return nil
 }

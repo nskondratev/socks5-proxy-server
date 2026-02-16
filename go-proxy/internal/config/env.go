@@ -37,3 +37,11 @@ func TelegramAPIToken() string {
 func TelegramUpdateProcessingTimeout() time.Duration {
 	return env.Duration("TELEGRAM_UPDATE_PROCESSING_TIMEOUT", time.Minute)
 }
+
+func PublicURL() string {
+	return env.String("PUBLIC_URL", "")
+}
+
+func AppPort() int {
+	return env.Int("APP_PORT", 54321)
+}

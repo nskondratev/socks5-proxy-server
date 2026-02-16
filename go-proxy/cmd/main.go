@@ -18,9 +18,15 @@ import (
 
 	"github.com/nskondratev/socks5-proxy-server/internal/adapters/proxy"
 	"github.com/nskondratev/socks5-proxy-server/internal/bot"
+	"github.com/nskondratev/socks5-proxy-server/internal/bot/commands/createuser"
+	"github.com/nskondratev/socks5-proxy-server/internal/bot/commands/deleteuser"
+	"github.com/nskondratev/socks5-proxy-server/internal/bot/commands/generatepass"
+	"github.com/nskondratev/socks5-proxy-server/internal/bot/commands/getusers"
 	"github.com/nskondratev/socks5-proxy-server/internal/bot/commands/start"
+	"github.com/nskondratev/socks5-proxy-server/internal/bot/commands/usersstats"
 	"github.com/nskondratev/socks5-proxy-server/internal/bot/handlers/message"
 	mw "github.com/nskondratev/socks5-proxy-server/internal/bot/middleware"
+	"github.com/nskondratev/socks5-proxy-server/internal/bot/store"
 	"github.com/nskondratev/socks5-proxy-server/internal/cache"
 	"github.com/nskondratev/socks5-proxy-server/internal/cli"
 	"github.com/nskondratev/socks5-proxy-server/internal/config"
@@ -31,8 +37,7 @@ import (
 )
 
 const (
-	httpClientTimeout     = 30 * time.Second
-	defaultHandlerTimeout = time.Minute
+	httpClientTimeout = 30 * time.Second
 )
 
 func main() {
@@ -100,7 +105,7 @@ func main() {
 	)
 
 	// Create telegram bot
-	b, err := initBot()
+	b, err := initBot(redisCli)
 	if err != nil {
 		slog.LogAttrs(
 			ctx,
@@ -167,7 +172,7 @@ func getUsernameFromRequest(request *socks5.Request) (string, bool) {
 	return username, true
 }
 
-func initBot() (*tele.Bot, error) {
+func initBot(redisCli *redis.Redis) (*tele.Bot, error) {
 	// Bot
 	botConf := tele.Settings{
 		Token: config.TelegramAPIToken(),
@@ -188,12 +193,18 @@ func initBot() (*tele.Bot, error) {
 		mw.RestrictByAdminUserID(),
 	)
 
+	botStore := store.New(redisCli)
+
 	// Commands
-	// TODO: here commands handlers will be registered. For example:
-	b.Handle(start.Command, start.New().Handle)
+	b.Handle(start.Command, start.New(botStore).Handle)
+	b.Handle(usersstats.Command, usersstats.New(botStore).Handle)
+	b.Handle(createuser.Command, createuser.New(botStore).Handle)
+	b.Handle(deleteuser.Command, deleteuser.New(botStore).Handle)
+	b.Handle(getusers.Command, getusers.New(botStore).Handle)
+	b.Handle(generatepass.Command, generatepass.New().Handle)
 
 	// Messages
-	b.Handle(tele.OnText, message.New().Handle)
+	b.Handle(tele.OnText, message.New(botStore).Handle)
 
 	return b, nil
 }
