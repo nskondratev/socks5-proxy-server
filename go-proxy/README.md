@@ -10,13 +10,14 @@ What's needed to be implemented:
 - [x] last login user date saving
 - [x] data usage stats
 - [x] CLI commands for creating and deleting users and getting users stats
+- [x] Telegram bot CLI commands for creating and deleting admin user
 - [ ] Telegram bot with commands
-- [ ] Telegram bot CLI commands for creating and deleting admin user
 - [ ] Telegram bot handling updates via webhook
 - [ ] Make optional proxy authentication
 
 Additional features:
 - [x] In-memory cache for user authentication
+- [ ] Graceful shutdown
 - [ ] Prometheus metrics export
 - [ ] Publishing proxy app as a separate image to Docker Hub
 - [ ] Add different levels tests

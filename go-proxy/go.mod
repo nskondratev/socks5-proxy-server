@@ -1,6 +1,6 @@
 module github.com/nskondratev/socks5-proxy-server
 
-go 1.25.6
+go 1.25
 
 require (
 	github.com/gojuno/minimock/v3 v3.4.7
