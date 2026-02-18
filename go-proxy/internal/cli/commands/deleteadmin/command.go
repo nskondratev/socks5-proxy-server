@@ -11,21 +11,20 @@ import (
 )
 
 const (
-	command      = "delete-admin"
-	userAdminKey = "user_admin"
+	command = "delete-admin"
 )
 
-type redis interface {
-	HDel(ctx context.Context, key string, fields ...string) error
+type adminService interface {
+	Remove(ctx context.Context, username string) error
 }
 
 type CommandHandler struct {
-	redis redis
-	in    *bufio.Reader
-	out   io.Writer
+	adminService adminService
+	in           *bufio.Reader
+	out          io.Writer
 }
 
-func New(redis redis, in io.Reader, out io.Writer) *CommandHandler {
+func New(adminService adminService, in io.Reader, out io.Writer) *CommandHandler {
 	if in == nil {
 		in = os.Stdin
 	}
@@ -33,7 +32,7 @@ func New(redis redis, in io.Reader, out io.Writer) *CommandHandler {
 		out = os.Stdout
 	}
 
-	return &CommandHandler{redis: redis, in: bufio.NewReader(in), out: out}
+	return &CommandHandler{adminService: adminService, in: bufio.NewReader(in), out: out}
 }
 
 func (h *CommandHandler) CanHandle(_ context.Context, commandName string) bool {
@@ -41,8 +40,8 @@ func (h *CommandHandler) CanHandle(_ context.Context, commandName string) bool {
 }
 
 func (h *CommandHandler) Handle(ctx context.Context) error {
-	if h.redis == nil {
-		return fmt.Errorf("[delete-admin] redis dependency is not configured")
+	if h.adminService == nil {
+		return fmt.Errorf("[delete-admin] admin service dependency is not configured")
 	}
 
 	fmt.Fprint(h.out, "Input admin username and press Enter: ")
@@ -51,7 +50,7 @@ func (h *CommandHandler) Handle(ctx context.Context) error {
 		return fmt.Errorf("[delete-admin] failed to read username: %w", err)
 	}
 
-	if err = h.redis.HDel(ctx, userAdminKey, username); err != nil {
+	if err = h.adminService.Remove(ctx, username); err != nil {
 		return fmt.Errorf("[delete-admin] failed to delete admin: %w", err)
 	}
 

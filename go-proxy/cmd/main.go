@@ -33,6 +33,7 @@ import (
 	"github.com/nskondratev/socks5-proxy-server/internal/log"
 	"github.com/nskondratev/socks5-proxy-server/internal/password"
 	"github.com/nskondratev/socks5-proxy-server/internal/redis"
+	"github.com/nskondratev/socks5-proxy-server/internal/services/admin"
 	"github.com/nskondratev/socks5-proxy-server/internal/services/users"
 )
 
@@ -188,9 +189,11 @@ func initBot(redisCli *redis.Redis) (*tele.Bot, error) {
 		return nil, fmt.Errorf("failed to create new telegram bot: %w", err)
 	}
 
+	adminService := admin.New(redisCli)
+
 	b.Use(
 		mw.SetTimeoutCtx(config.TelegramUpdateProcessingTimeout()),
-		mw.RestrictByAdminUserID(),
+		mw.RestrictByAdminUserID(adminService),
 	)
 
 	botStore := store.New(redisCli)

@@ -16,12 +16,15 @@ const (
 
 type userStateSetter interface {
 	SetUserState(ctx context.Context, username string, state store.UserState) error
-	UpdateAdminChatID(ctx context.Context, username string, chatID int64) error
 }
 
-type Handler struct{ store userStateSetter }
+type Handler struct {
+	store userStateSetter
+}
 
-func New(store userStateSetter) *Handler { return &Handler{store: store} }
+func New(store userStateSetter) *Handler {
+	return &Handler{store: store}
+}
 
 func (h *Handler) Handle(c tele.Context) error {
 	sender := c.Sender()
@@ -36,10 +39,6 @@ func (h *Handler) Handle(c tele.Context) error {
 
 	if err := c.Send("Hello! You can manage proxy server."); err != nil {
 		return fmt.Errorf("failed to send message: %w", err)
-	}
-
-	if err := h.store.UpdateAdminChatID(ctx, sender.Username, c.Chat().ID); err != nil {
-		return fmt.Errorf("failed to update admin chat id: %w", err)
 	}
 
 	return nil

@@ -12,6 +12,7 @@ import (
 	"github.com/nskondratev/socks5-proxy-server/internal/cli/commands/stats"
 	"github.com/nskondratev/socks5-proxy-server/internal/config"
 	"github.com/nskondratev/socks5-proxy-server/internal/log"
+	"github.com/nskondratev/socks5-proxy-server/internal/services/admin"
 )
 
 type redis interface {
@@ -19,6 +20,7 @@ type redis interface {
 	HGetAll(ctx context.Context, key string) (map[string]string, error)
 	HSet(ctx context.Context, key string, values ...interface{}) error
 	HDel(ctx context.Context, key string, fields ...string) error
+	HExists(ctx context.Context, key, field string) (bool, error)
 }
 
 type CLICommandsDeps struct {
@@ -42,10 +44,12 @@ func HandleCLICommand(ctx context.Context, deps *CLICommandsDeps) (handled bool)
 
 	fmt.Printf("In CLI command mode, process command with name: %s\n", commandName)
 
+	adminService := admin.New(deps.Redis)
+
 	commands := []commandHandler{
-		createadmin.New(deps.Redis, os.Stdin, os.Stdout),
+		createadmin.New(adminService, os.Stdin, os.Stdout),
 		createuser.New(deps.Redis, os.Stdin, os.Stdout),
-		deleteadmin.New(deps.Redis, os.Stdin, os.Stdout),
+		deleteadmin.New(adminService, os.Stdin, os.Stdout),
 		deleteuser.New(deps.Redis, os.Stdin, os.Stdout),
 		stats.New(deps.Redis, os.Stdout),
 	}

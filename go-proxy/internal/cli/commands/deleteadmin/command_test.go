@@ -8,37 +8,31 @@ import (
 	"testing"
 )
 
-type redisMock struct {
-	hDelErr  error
-	hDelKey  string
-	hDelArgs []string
+type adminServiceMock struct {
+	removeErr error
+	username  string
 }
 
-func (m *redisMock) HDel(_ context.Context, key string, fields ...string) error {
-	m.hDelKey = key
-	m.hDelArgs = fields
+func (m *adminServiceMock) Remove(_ context.Context, username string) error {
+	m.username = username
 
-	return m.hDelErr
+	return m.removeErr
 }
 
 func TestCommandHandler_Handle(t *testing.T) {
 	t.Parallel()
 
 	buf := bytes.NewBuffer(nil)
-	redis := &redisMock{}
-	h := New(redis, strings.NewReader("alice\n"), buf)
+	adminService := &adminServiceMock{}
+	h := New(adminService, strings.NewReader("alice\n"), buf)
 
 	err := h.Handle(context.Background())
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
 
-	if redis.hDelKey != userAdminKey {
-		t.Fatalf("expected key %q, got %q", userAdminKey, redis.hDelKey)
-	}
-
-	if len(redis.hDelArgs) != 1 || redis.hDelArgs[0] != "alice" {
-		t.Fatalf("expected username alice, got %v", redis.hDelArgs)
+	if adminService.username != "alice" {
+		t.Fatalf("expected username alice, got %q", adminService.username)
 	}
 
 	if !strings.Contains(buf.String(), "Admin successfully deleted.") {
@@ -46,10 +40,10 @@ func TestCommandHandler_Handle(t *testing.T) {
 	}
 }
 
-func TestCommandHandler_HandleHDelError(t *testing.T) {
+func TestCommandHandler_HandleRemoveError(t *testing.T) {
 	t.Parallel()
 
-	h := New(&redisMock{hDelErr: errors.New("boom")}, strings.NewReader("alice\n"), bytes.NewBuffer(nil))
+	h := New(&adminServiceMock{removeErr: errors.New("boom")}, strings.NewReader("alice\n"), bytes.NewBuffer(nil))
 
 	err := h.Handle(context.Background())
 	if err == nil {

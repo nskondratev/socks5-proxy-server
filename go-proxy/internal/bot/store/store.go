@@ -18,7 +18,6 @@ const (
 	userAuthKey  = "user_auth"
 	dataUsageKey = "user_usage_data"
 	authDateKey  = "user_auth_date"
-	adminUserKey = "user_admin"
 	userStateKey = "user_state"
 	jsTimeLayout = "2006-01-02T15:04:05.000Z"
 	defaultBCost = 10
@@ -88,14 +87,6 @@ func (s *Store) SetUserState(ctx context.Context, username string, state UserSta
 
 	if err = s.redis.HSet(ctx, userStateKey, username, stateJSON); err != nil {
 		return fmt.Errorf("failed to save user state: %w", err)
-	}
-
-	return nil
-}
-
-func (s *Store) UpdateAdminChatID(ctx context.Context, username string, chatID int64) error {
-	if err := s.redis.HSet(ctx, adminUserKey, username, chatID); err != nil {
-		return fmt.Errorf("failed to update admin chat id: %w", err)
 	}
 
 	return nil
