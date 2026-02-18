@@ -26,6 +26,14 @@ func AuthCacheTTL() time.Duration {
 	return env.Duration("AUTH_CACHE_TTL", time.Hour)
 }
 
+func RedisAuthUpdatesQueueSize() int {
+	return env.Int("REDIS_AUTH_UPDATES_QUEUE_SIZE", 4096)
+}
+
+func RedisUsageUpdatesQueueSize() int {
+	return env.Int("REDIS_USAGE_UPDATES_QUEUE_SIZE", 16384)
+}
+
 func LogLevel() string {
 	return env.String("LOG_LEVEL", "warning")
 }

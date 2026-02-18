@@ -58,17 +58,22 @@ func main() {
 
 	log.SetDefaultWithParams(log.OutputText, log.ParseStringLogLevel(config.LogLevel()))
 
+	updatesManager := users.NewUpdatesManager(
+		usersService,
+		config.RedisAuthUpdatesQueueSize(),
+		config.RedisUsageUpdatesQueueSize(),
+	)
+
 	authCredentialValidator := proxy.NewAuthWithCache(
 		cache.NewExpirableLRU[proxy.AuthCacheKey, bool](config.AuthCacheMaxSize(), config.AuthCacheTTL()),
 		proxy.NewAuth(usersService, passwords),
 		func(user string) {
-			if err := usersService.UpdateLastAuthDate(ctx, user); err != nil {
+			if queued := updatesManager.EnqueueLastAuthDateUpdate(user); !queued {
 				slog.LogAttrs(
 					ctx,
 					slog.LevelWarn,
-					"failed to update auth date for user",
+					"failed to enqueue auth date update for user",
 					slog.String(log.FieldUsername, user),
-					slog.String(log.FieldError, err.Error()),
 				)
 			}
 		},
@@ -91,13 +96,12 @@ func main() {
 			}
 
 			return proxy.NewUsageTrackedConn(conn, func(dataLen int64) {
-				if err := usersService.IncreaseDataUsage(ctx, username, dataLen); err != nil {
+				if queued := updatesManager.EnqueueUsageUpdate(username, dataLen); !queued {
 					slog.LogAttrs(
 						ctx,
 						slog.LevelWarn,
-						"failed to increase data usage for user",
+						"failed to enqueue data usage update for user",
 						slog.String(log.FieldUsername, username),
-						slog.String(log.FieldError, err.Error()),
 					)
 				}
 			}), nil
@@ -119,6 +123,12 @@ func main() {
 	}
 
 	g, ctx := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
+		slog.LogAttrs(ctx, slog.LevelInfo, "start redis updates manager")
+
+		return updatesManager.Run(ctx)
+	})
 
 	g.Go(func() error {
 		// Create SOCKS5 proxy on localhost port 8000
