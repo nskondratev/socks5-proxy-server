@@ -275,19 +275,22 @@ func makeTelegramPoller() (tele.Poller, error) {
 		return nil, err
 	}
 
-	// sslCertPath := filepath.Join("ssl", "crt.pem")
+	webhookEndpoint := &tele.WebhookEndpoint{PublicURL: webHookURL}
+	poller := &tele.Webhook{
+		Listen:   fmt.Sprintf(":%d", config.BotAppPort()),
+		Endpoint: webhookEndpoint,
+	}
 
-	return &tele.Webhook{
-		Listen: fmt.Sprintf(":%d", config.BotAppPort()),
-		Endpoint: &tele.WebhookEndpoint{
-			PublicURL: webHookURL,
-			// Cert:      sslCertPath,
-		},
-		// TLS: &tele.WebhookTLS{
-		// Cert: sslCertPath,
-		// Key:  filepath.Join("ssl", "key.pem"),
-		// },
-	}, nil
+	certPath := config.TelegramWebhookTLSCertPath()
+	keyPath := config.TelegramWebhookTLSKeyPath()
+	if certPath == "" || keyPath == "" {
+		return poller, nil
+	}
+
+	webhookEndpoint.Cert = certPath
+	poller.TLS = &tele.WebhookTLS{Cert: certPath, Key: keyPath}
+
+	return poller, nil
 }
 
 func buildTelegramWebhookURL() (string, error) {

@@ -15,7 +15,7 @@ What's needed to be implemented:
 - [x] Make optional proxy authentication
 - [x] Telegram bot handling updates via webhook
 - [x] Add clearing usage stats every month
-- [ ] Add support for self-signed SSL certificates for Telegram webhook
+- [x] Add support for self-signed SSL certificates for Telegram webhook
 
 Additional features:
 - [x] In-memory cache for user authentication
@@ -62,3 +62,13 @@ Each run writes timestamped files to `go-proxy/reports/loadtest` (or `--report-d
 - `summary-<timestamp>.md` — short human-readable summary
 
 These files allow you to track performance dynamics over multiple runs.
+
+
+### Telegram webhook TLS (self-signed certificates)
+
+If the bot works in webhook mode (`TELEGRAM_USE_WEBHOOKS=1`), you can optionally enable local TLS using a self-signed certificate:
+
+- `TELEGRAM_WEBHOOK_TLS_CERT_PATH` — path to certificate file.
+- `TELEGRAM_WEBHOOK_TLS_KEY_PATH` — path to private key file.
+
+TLS is enabled only when **both** variables are set. If one or both are empty, webhook server starts without local TLS.

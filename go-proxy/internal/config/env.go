@@ -66,6 +66,14 @@ func BotAppPort() int {
 	return env.Int("BOT_APP_PORT", 8443)
 }
 
+func TelegramWebhookTLSCertPath() string {
+	return env.String("TELEGRAM_WEBHOOK_TLS_CERT_PATH", "")
+}
+
+func TelegramWebhookTLSKeyPath() string {
+	return env.String("TELEGRAM_WEBHOOK_TLS_KEY_PATH", "")
+}
+
 func AppPort() int {
 	return env.Int("APP_PORT", 54321)
 }

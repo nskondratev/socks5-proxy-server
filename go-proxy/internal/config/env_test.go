@@ -42,3 +42,27 @@ func TestBotAppPort(t *testing.T) {
 	assert.NoError(t, os.Unsetenv("BOT_APP_PORT"))
 	assert.Equal(t, 8443, BotAppPort())
 }
+
+func TestTelegramWebhookTLSCertPath(t *testing.T) {
+	t.Cleanup(func() {
+		_ = os.Unsetenv("TELEGRAM_WEBHOOK_TLS_CERT_PATH")
+	})
+
+	assert.NoError(t, os.Setenv("TELEGRAM_WEBHOOK_TLS_CERT_PATH", "ssl/crt.pem"))
+	assert.Equal(t, "ssl/crt.pem", TelegramWebhookTLSCertPath())
+
+	assert.NoError(t, os.Unsetenv("TELEGRAM_WEBHOOK_TLS_CERT_PATH"))
+	assert.Equal(t, "", TelegramWebhookTLSCertPath())
+}
+
+func TestTelegramWebhookTLSKeyPath(t *testing.T) {
+	t.Cleanup(func() {
+		_ = os.Unsetenv("TELEGRAM_WEBHOOK_TLS_KEY_PATH")
+	})
+
+	assert.NoError(t, os.Setenv("TELEGRAM_WEBHOOK_TLS_KEY_PATH", "ssl/key.pem"))
+	assert.Equal(t, "ssl/key.pem", TelegramWebhookTLSKeyPath())
+
+	assert.NoError(t, os.Unsetenv("TELEGRAM_WEBHOOK_TLS_KEY_PATH"))
+	assert.Equal(t, "", TelegramWebhookTLSKeyPath())
+}
