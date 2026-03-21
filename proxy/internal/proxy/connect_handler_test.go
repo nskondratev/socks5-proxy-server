@@ -1,0 +1,358 @@
+package proxy
+
+import (
+	"context"
+	"encoding/binary"
+	"errors"
+	"fmt"
+	"io"
+	"net"
+	"strconv"
+	"testing"
+	"time"
+
+	"github.com/things-go/go-socks5/statute"
+)
+
+func TestMapDialErrorToReply(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		err  error
+		want uint8
+	}{
+		{
+			name: "connection refused",
+			err:  errors.New("dial tcp 127.0.0.1:1: connect: connection refused"),
+			want: statute.RepConnectionRefused,
+		},
+		{
+			name: "network unreachable",
+			err:  errors.New("dial tcp: network is unreachable"),
+			want: statute.RepNetworkUnreachable,
+		},
+		{
+			name: "host unreachable fallback",
+			err:  errors.New("dial tcp: i/o timeout"),
+			want: statute.RepHostUnreachable,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			if got := mapDialErrorToReply(tt.err); got != tt.want {
+				t.Fatalf("mapDialErrorToReply() = %d, want %d", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestNormalizeProxyCopyError(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		err     error
+		wantNil bool
+	}{
+		{name: "nil", err: nil, wantNil: true},
+		{name: "eof", err: io.EOF, wantNil: true},
+		{name: "closed", err: net.ErrClosed, wantNil: true},
+		{name: "timeout", err: &timeoutError{}, wantNil: true},
+		{name: "closed text", err: errors.New("read tcp 127.0.0.1: use of closed network connection"), wantNil: true},
+		{name: "unexpected", err: errors.New("boom"), wantNil: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			err := normalizeProxyCopyError(tt.err)
+			if tt.wantNil && err != nil {
+				t.Fatalf("normalizeProxyCopyError() = %v, want nil", err)
+			}
+
+			if !tt.wantNil && err == nil {
+				t.Fatal("normalizeProxyCopyError() = nil, want error")
+			}
+		})
+	}
+}
+
+func TestWrapListenerWithHandshakeTimeout(t *testing.T) {
+	t.Parallel()
+
+	base := &listenerStub{
+		conn: &connStub{},
+	}
+
+	wrapped := WrapListenerWithHandshakeTimeout(base, time.Second)
+	conn, err := wrapped.Accept()
+	if err != nil {
+		t.Fatalf("Accept() unexpected error: %v", err)
+	}
+
+	stub, ok := conn.(*connStub)
+	if !ok {
+		t.Fatalf("Accept() returned %T, want *connStub", conn)
+	}
+
+	if stub.deadline.IsZero() {
+		t.Fatal("deadline was not set")
+	}
+}
+
+func TestIdleDeadlineConnExtendsDeadline(t *testing.T) {
+	t.Parallel()
+
+	client, server := net.Pipe()
+	t.Cleanup(func() {
+		_ = client.Close()
+		_ = server.Close()
+	})
+
+	conn, err := newIdleDeadlineConn(client, 100*time.Millisecond)
+	if err != nil {
+		t.Fatalf("newIdleDeadlineConn() unexpected error: %v", err)
+	}
+
+	go func() {
+		_, _ = server.Write([]byte("ping"))
+	}()
+
+	buf := make([]byte, 4)
+	if _, err := conn.Read(buf); err != nil {
+		t.Fatalf("Read() unexpected error: %v", err)
+	}
+
+	if err := server.SetReadDeadline(time.Now().Add(time.Second)); err != nil {
+		t.Fatalf("SetReadDeadline() unexpected error: %v", err)
+	}
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+
+		buf := make([]byte, 4)
+		_, _ = io.ReadFull(server, buf)
+	}()
+
+	if _, err := conn.Write([]byte("pong")); err != nil {
+		t.Fatalf("Write() unexpected error: %v", err)
+	}
+
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("server side did not receive proxied bytes")
+	}
+}
+
+func TestProxyIdleTimeoutClosesIdleConnection(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	listenCfg := net.ListenConfig{}
+
+	targetListener, err := listenCfg.Listen(ctx, "tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("failed to start target listener: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = targetListener.Close()
+	})
+
+	targetDone := make(chan struct{})
+	go func() {
+		defer close(targetDone)
+
+		conn, acceptErr := targetListener.Accept()
+		if acceptErr != nil {
+			return
+		}
+		defer func() {
+			_ = conn.Close()
+		}()
+
+		<-time.After(time.Second)
+	}()
+
+	server, err := NewServer(NewServerParams{
+		Config: Config{
+			IdleTimeout: 100 * time.Millisecond,
+		},
+	})
+	if err != nil {
+		t.Fatalf("NewServer() unexpected error: %v", err)
+	}
+
+	proxyListener, err := listenCfg.Listen(ctx, "tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("failed to start proxy listener: %v", err)
+	}
+	proxyListener = WrapListenerWithHandshakeTimeout(proxyListener, time.Second)
+	t.Cleanup(func() {
+		_ = proxyListener.Close()
+	})
+
+	proxyDone := make(chan struct{})
+	go func() {
+		defer close(proxyDone)
+		_ = server.Serve(proxyListener)
+	}()
+
+	conn, err := dialViaSocks5NoAuth(proxyListener.Addr().String(), targetListener.Addr().String(), time.Second)
+	if err != nil {
+		t.Fatalf("failed to connect through proxy: %v", err)
+	}
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	time.Sleep(350 * time.Millisecond)
+
+	if err := conn.SetReadDeadline(time.Now().Add(time.Second)); err != nil {
+		t.Fatalf("SetReadDeadline() unexpected error: %v", err)
+	}
+
+	buf := make([]byte, 1)
+	_, err = conn.Read(buf)
+	if err == nil {
+		t.Fatal("Read() expected connection close after idle timeout")
+	}
+
+	var netErr net.Error
+	if errors.As(err, &netErr) && netErr.Timeout() {
+		t.Fatalf("Read() timed out instead of observing closed connection: %v", err)
+	}
+
+	_ = proxyListener.Close()
+	<-proxyDone
+	<-targetDone
+}
+
+func dialViaSocks5NoAuth(proxyAddr, targetAddr string, timeout time.Duration) (net.Conn, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	dialer := &net.Dialer{Timeout: timeout}
+
+	conn, err := dialer.DialContext(ctx, "tcp", proxyAddr)
+	if err != nil {
+		return nil, err
+	}
+
+	if err = conn.SetDeadline(time.Now().Add(timeout)); err != nil {
+		_ = conn.Close()
+		return nil, err
+	}
+
+	if err = socks5NoAuthGreeting(conn); err != nil {
+		_ = conn.Close()
+		return nil, err
+	}
+
+	if err = socks5Connect(conn, targetAddr); err != nil {
+		_ = conn.Close()
+		return nil, err
+	}
+
+	if err = conn.SetDeadline(time.Time{}); err != nil {
+		_ = conn.Close()
+		return nil, err
+	}
+
+	return conn, nil
+}
+
+func socks5NoAuthGreeting(conn net.Conn) error {
+	if _, err := conn.Write([]byte{0x05, 0x01, 0x00}); err != nil {
+		return err
+	}
+
+	resp := make([]byte, 2)
+	if _, err := io.ReadFull(conn, resp); err != nil {
+		return err
+	}
+
+	if resp[0] != 0x05 || resp[1] != 0x00 {
+		return fmt.Errorf("unexpected greeting response: %v", resp)
+	}
+
+	return nil
+}
+
+func socks5Connect(conn net.Conn, targetAddr string) error {
+	host, rawPort, err := net.SplitHostPort(targetAddr)
+	if err != nil {
+		return err
+	}
+
+	port, err := strconv.ParseUint(rawPort, 10, 16)
+	if err != nil {
+		return err
+	}
+
+	ip := net.ParseIP(host)
+	if ip == nil {
+		return fmt.Errorf("invalid target host: %s", host)
+	}
+
+	ip = ip.To4()
+	if ip == nil {
+		return errors.New("only ipv4 is supported in test helper")
+	}
+
+	req := []byte{0x05, 0x01, 0x00, 0x01}
+	req = append(req, ip...)
+	req = binary.BigEndian.AppendUint16(req, uint16(port))
+
+	if _, err := conn.Write(req); err != nil {
+		return err
+	}
+
+	resp := make([]byte, 10)
+	if _, err := io.ReadFull(conn, resp); err != nil {
+		return err
+	}
+
+	if resp[0] != 0x05 {
+		return fmt.Errorf("unexpected SOCKS version: %d", resp[0])
+	}
+
+	if resp[1] != 0x00 {
+		return fmt.Errorf("connect failed with status %d", resp[1])
+	}
+
+	return nil
+}
+
+type timeoutError struct{}
+
+func (e *timeoutError) Error() string   { return "i/o timeout" }
+func (e *timeoutError) Timeout() bool   { return true }
+func (e *timeoutError) Temporary() bool { return true }
+
+type listenerStub struct {
+	conn net.Conn
+}
+
+func (l *listenerStub) Accept() (net.Conn, error) { return l.conn, nil }
+func (l *listenerStub) Close() error              { return nil }
+func (l *listenerStub) Addr() net.Addr            { return &net.TCPAddr{} }
+
+type connStub struct {
+	deadline time.Time
+}
+
+func (c *connStub) Read(_ []byte) (int, error)         { return 0, io.EOF }
+func (c *connStub) Write(p []byte) (int, error)        { return len(p), nil }
+func (c *connStub) Close() error                       { return nil }
+func (c *connStub) LocalAddr() net.Addr                { return &net.TCPAddr{} }
+func (c *connStub) RemoteAddr() net.Addr               { return &net.TCPAddr{} }
+func (c *connStub) SetDeadline(t time.Time) error      { c.deadline = t; return nil }
+func (c *connStub) SetReadDeadline(t time.Time) error  { c.deadline = t; return nil }
+func (c *connStub) SetWriteDeadline(t time.Time) error { c.deadline = t; return nil }

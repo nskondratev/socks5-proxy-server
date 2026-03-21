@@ -44,6 +44,7 @@ type Config struct {
 	RequireAuth      bool
 	AuthCacheMaxSize int
 	AuthCacheTTL     time.Duration
+	IdleTimeout      time.Duration
 }
 
 type NewServerParams struct {
@@ -62,6 +63,7 @@ func NewServer(params NewServerParams) (*socks5.Server, error) {
 
 	socks5Opts := []socks5.Option{
 		socks5.WithDialAndRequest(newDialAndRequest(params)),
+		socks5.WithConnectHandle(newConnectHandler(params)),
 	}
 
 	if params.Config.RequireAuth {

@@ -30,6 +30,14 @@ func AuthCacheTTL() time.Duration {
 	return env.Duration("AUTH_CACHE_TTL", time.Hour)
 }
 
+func ProxyHandshakeTimeout() time.Duration {
+	return env.Duration("PROXY_HANDSHAKE_TIMEOUT", 10*time.Second)
+}
+
+func ProxyIdleTimeout() time.Duration {
+	return env.Duration("PROXY_IDLE_TIMEOUT", 15*time.Minute)
+}
+
 func RedisAuthUpdatesQueueSize() int {
 	return env.Int("REDIS_AUTH_UPDATES_QUEUE_SIZE", 4096)
 }
@@ -100,4 +108,24 @@ func MetricsAuthUsername() string {
 
 func MetricsAuthPassword() string {
 	return env.String("METRICS_AUTH_PASSWORD", "")
+}
+
+func PprofEnabled() bool {
+	return env.Bool("PPROF_ENABLED", false)
+}
+
+func PprofPort() int {
+	return env.Int("PPROF_PORT", 6060)
+}
+
+func PprofAuthEnabled() bool {
+	return env.Bool("PPROF_AUTH_ENABLED", false)
+}
+
+func PprofAuthUsername() string {
+	return env.String("PPROF_AUTH_USERNAME", "")
+}
+
+func PprofAuthPassword() string {
+	return env.String("PPROF_AUTH_PASSWORD", "")
 }
