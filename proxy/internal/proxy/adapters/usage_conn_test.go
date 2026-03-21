@@ -98,3 +98,33 @@ func TestUsageTrackedConn_Close(t *testing.T) {
 		t.Fatalf("onClose called %d times, want 1", closedCalled)
 	}
 }
+
+func TestUsageTrackedConn_CloseWrite(t *testing.T) {
+	t.Parallel()
+
+	baseConn := &closeWriteConnStub{}
+	conn := NewUsageTrackedConn(baseConn, nil)
+
+	writer, ok := conn.(interface{ CloseWrite() error })
+	if !ok {
+		t.Fatal("connection does not implement CloseWrite")
+	}
+
+	if err := writer.CloseWrite(); err != nil {
+		t.Fatalf("CloseWrite() unexpected error: %v", err)
+	}
+
+	if !baseConn.closeWriteCalled {
+		t.Fatal("underlying CloseWrite() was not called")
+	}
+}
+
+type closeWriteConnStub struct {
+	net.Conn
+	closeWriteCalled bool
+}
+
+func (c *closeWriteConnStub) CloseWrite() error {
+	c.closeWriteCalled = true
+	return nil
+}

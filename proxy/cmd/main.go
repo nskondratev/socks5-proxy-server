@@ -21,6 +21,7 @@ import (
 	"github.com/nskondratev/socks5-proxy-server/proxy/internal/log"
 	"github.com/nskondratev/socks5-proxy-server/proxy/internal/metrics"
 	"github.com/nskondratev/socks5-proxy-server/proxy/internal/password"
+	pprofserver "github.com/nskondratev/socks5-proxy-server/proxy/internal/pprofserver"
 	"github.com/nskondratev/socks5-proxy-server/proxy/internal/proxy"
 	"github.com/nskondratev/socks5-proxy-server/proxy/internal/redis"
 	"github.com/nskondratev/socks5-proxy-server/proxy/internal/services/users"
@@ -74,6 +75,7 @@ func main() {
 			RequireAuth:      config.RequireAuth(),
 			AuthCacheMaxSize: config.AuthCacheMaxSize(),
 			AuthCacheTTL:     config.AuthCacheTTL(),
+			IdleTimeout:      config.ProxyIdleTimeout(),
 		},
 		PasswordHashGetter: usersService,
 		PasswordComparator: password.New(),
@@ -84,6 +86,23 @@ func main() {
 		log.Error(
 			ctx,
 			"failed to init socks5 server",
+			log.String(log.FieldError, err.Error()),
+		)
+
+		return
+	}
+
+	pprofService, err := pprofserver.New(pprofserver.Config{
+		Enabled:      config.PprofEnabled(),
+		Port:         config.PprofPort(),
+		AuthEnabled:  config.PprofAuthEnabled(),
+		AuthUsername: config.PprofAuthUsername(),
+		AuthPassword: config.PprofAuthPassword(),
+	})
+	if err != nil {
+		log.Error(
+			ctx,
+			"failed to init pprof service",
 			log.String(log.FieldError, err.Error()),
 		)
 
@@ -102,6 +121,8 @@ func main() {
 
 		return
 	}
+
+	proxyListener = proxy.WrapListenerWithHandshakeTimeout(proxyListener, config.ProxyHandshakeTimeout())
 
 	// Create telegram bot
 	var b *tele.Bot
@@ -170,6 +191,19 @@ func main() {
 			)
 
 			return metricsService.Run(ctx)
+		})
+	}
+
+	if pprofService.Enabled() {
+		g.Go(func() error {
+			log.Info(
+				ctx,
+				"start pprof server",
+				log.Int("port", config.PprofPort()),
+				log.Bool("auth_enabled", config.PprofAuthEnabled()),
+			)
+
+			return pprofService.Run(ctx)
 		})
 	}
 

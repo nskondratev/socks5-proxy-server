@@ -12,6 +12,10 @@ type usageTrackedConn struct {
 	onCloseOnce sync.Once
 }
 
+type closeWriter interface {
+	CloseWrite() error
+}
+
 func NewUsageTrackedConn(conn net.Conn, onData func(dataLen int64)) net.Conn {
 	return NewUsageTrackedConnWithClose(conn, onData, nil)
 }
@@ -51,4 +55,13 @@ func (c *usageTrackedConn) Close() error {
 	})
 
 	return err
+}
+
+func (c *usageTrackedConn) CloseWrite() error {
+	writer, ok := c.Conn.(closeWriter)
+	if !ok {
+		return nil
+	}
+
+	return writer.CloseWrite()
 }

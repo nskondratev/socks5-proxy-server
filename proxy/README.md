@@ -24,6 +24,8 @@ Additional features:
 - [x] Linting and testing via Github Actions
 - [x] Config for disabling Telegram bot in app
 - [x] Prometheus metrics export
+- [x] Optional pprof endpoints
+- [x] Handshake and idle timeouts for proxy connections
 - [x] Publishing proxy app as a separate image to Docker Hub
 - [x] Generating deeplink for setting socks5 proxy in Telegram: https://core.telegram.org/api/links#socks5-proxy-links
 
@@ -73,6 +75,14 @@ If the bot works in webhook mode (`TELEGRAM_USE_WEBHOOKS=1`), you can optionally
 - `TELEGRAM_WEBHOOK_TLS_KEY_PATH` — path to private key file.
 
 TLS is enabled only when **both** variables are set. If one or both are empty, webhook server starts without local TLS.
+
+### Profiling and connection timeouts
+
+- `PPROF_ENABLED` enables `net/http/pprof` endpoints on a dedicated HTTP server.
+- `PPROF_PORT` sets the pprof server port (`6060` by default).
+- `PPROF_AUTH_ENABLED`, `PPROF_AUTH_USERNAME`, `PPROF_AUTH_PASSWORD` optionally protect pprof with HTTP Basic Auth.
+- `PROXY_HANDSHAKE_TIMEOUT` limits how long a client may stay in SOCKS handshake before the server closes the connection (`10s` by default).
+- `PROXY_IDLE_TIMEOUT` limits how long an established proxy tunnel may stay idle without reads or writes (`15m` by default).
 
 ## Integration tests (regression e2e)
 
