@@ -56,7 +56,7 @@ func TestPprofExposed(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	req := httptest.NewRequest(http.MethodGet, "/debug/pprof/", http.NoBody)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/debug/pprof/", http.NoBody)
 	rec := httptest.NewRecorder()
 	s.server.Handler.ServeHTTP(rec, req)
 
@@ -75,7 +75,7 @@ func TestPprofAuth(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("unauthorized without credentials", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/debug/pprof/", http.NoBody)
+		req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/debug/pprof/", http.NoBody)
 		rec := httptest.NewRecorder()
 
 		s.server.Handler.ServeHTTP(rec, req)
@@ -85,7 +85,7 @@ func TestPprofAuth(t *testing.T) {
 	})
 
 	t.Run("unauthorized with invalid credentials", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/debug/pprof/", http.NoBody)
+		req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/debug/pprof/", http.NoBody)
 		req.SetBasicAuth("debug", "bad")
 		rec := httptest.NewRecorder()
 
@@ -95,7 +95,7 @@ func TestPprofAuth(t *testing.T) {
 	})
 
 	t.Run("authorized", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/debug/pprof/", http.NoBody)
+		req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/debug/pprof/", http.NoBody)
 		req.SetBasicAuth("debug", "secret")
 		rec := httptest.NewRecorder()
 
