@@ -151,6 +151,46 @@ func TestIdleDeadlineConnExtendsDeadline(t *testing.T) {
 	}
 }
 
+func TestIdleDeadlineConnTracksReadAndWriteSeparately(t *testing.T) {
+	t.Parallel()
+
+	baseConn := &deadlineTrackingConnStub{}
+	conn, err := newIdleDeadlineConn(baseConn, time.Second)
+	if err != nil {
+		t.Fatalf("newIdleDeadlineConn() unexpected error: %v", err)
+	}
+
+	initialReadDeadline := baseConn.readDeadline
+	initialWriteDeadline := baseConn.writeDeadline
+
+	buf := make([]byte, 1)
+	if _, err := conn.Read(buf); err != nil {
+		t.Fatalf("Read() unexpected error: %v", err)
+	}
+
+	if !baseConn.readDeadline.After(initialReadDeadline) {
+		t.Fatal("read deadline was not extended")
+	}
+
+	if !baseConn.writeDeadline.Equal(initialWriteDeadline) {
+		t.Fatal("write deadline changed on read")
+	}
+
+	readDeadlineAfterRead := baseConn.readDeadline
+
+	if _, err := conn.Write([]byte("b")); err != nil {
+		t.Fatalf("Write() unexpected error: %v", err)
+	}
+
+	if !baseConn.writeDeadline.After(initialWriteDeadline) {
+		t.Fatal("write deadline was not extended")
+	}
+
+	if !baseConn.readDeadline.Equal(readDeadlineAfterRead) {
+		t.Fatal("read deadline changed on write")
+	}
+}
+
 func TestProxyIdleTimeoutClosesIdleConnection(t *testing.T) {
 	t.Parallel()
 
@@ -227,6 +267,117 @@ func TestProxyIdleTimeoutClosesIdleConnection(t *testing.T) {
 	var netErr net.Error
 	if errors.As(err, &netErr) && netErr.Timeout() {
 		t.Fatalf("Read() timed out instead of observing closed connection: %v", err)
+	}
+
+	_ = proxyListener.Close()
+	<-proxyDone
+	<-targetDone
+}
+
+func TestProxyHalfCloseAllowsReply(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	listenCfg := net.ListenConfig{}
+
+	targetListener, err := listenCfg.Listen(ctx, "tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("failed to start target listener: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = targetListener.Close()
+	})
+
+	targetDone := make(chan struct{})
+	go func() {
+		defer close(targetDone)
+
+		conn, acceptErr := targetListener.Accept()
+		if acceptErr != nil {
+			return
+		}
+		defer func() {
+			_ = conn.Close()
+		}()
+
+		if err := conn.SetDeadline(time.Now().Add(2 * time.Second)); err != nil {
+			t.Errorf("SetDeadline() unexpected error: %v", err)
+			return
+		}
+
+		payload, readErr := io.ReadAll(conn)
+		if readErr != nil {
+			t.Errorf("ReadAll() unexpected error: %v", readErr)
+			return
+		}
+
+		if string(payload) != "ping" {
+			t.Errorf("unexpected payload: %q", string(payload))
+			return
+		}
+
+		if _, writeErr := conn.Write([]byte("pong")); writeErr != nil {
+			t.Errorf("Write() unexpected error: %v", writeErr)
+		}
+	}()
+
+	server, err := NewServer(NewServerParams{
+		Config: Config{
+			IdleTimeout: time.Second,
+		},
+		Metrics: noopMetricsObserver{},
+	})
+	if err != nil {
+		t.Fatalf("NewServer() unexpected error: %v", err)
+	}
+
+	proxyListener, err := listenCfg.Listen(ctx, "tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("failed to start proxy listener: %v", err)
+	}
+	proxyListener = WrapListenerWithHandshakeTimeout(proxyListener, time.Second)
+	t.Cleanup(func() {
+		_ = proxyListener.Close()
+	})
+
+	proxyDone := make(chan struct{})
+	go func() {
+		defer close(proxyDone)
+		_ = server.Serve(proxyListener)
+	}()
+
+	conn, err := dialViaSocks5NoAuth(proxyListener.Addr().String(), targetListener.Addr().String(), time.Second)
+	if err != nil {
+		t.Fatalf("failed to connect through proxy: %v", err)
+	}
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	if _, err := conn.Write([]byte("ping")); err != nil {
+		t.Fatalf("Write() unexpected error: %v", err)
+	}
+
+	closeWriter, ok := conn.(interface{ CloseWrite() error })
+	if !ok {
+		t.Fatal("client connection does not implement CloseWrite")
+	}
+
+	if err := closeWriter.CloseWrite(); err != nil {
+		t.Fatalf("CloseWrite() unexpected error: %v", err)
+	}
+
+	if err := conn.SetReadDeadline(time.Now().Add(2 * time.Second)); err != nil {
+		t.Fatalf("SetReadDeadline() unexpected error: %v", err)
+	}
+
+	reply := make([]byte, 4)
+	if _, err := io.ReadFull(conn, reply); err != nil {
+		t.Fatalf("ReadFull() unexpected error: %v", err)
+	}
+
+	if string(reply) != "pong" {
+		t.Fatalf("unexpected reply: %q", string(reply))
 	}
 
 	_ = proxyListener.Close()
@@ -336,6 +487,15 @@ func (e *timeoutError) Error() string   { return "i/o timeout" }
 func (e *timeoutError) Timeout() bool   { return true }
 func (e *timeoutError) Temporary() bool { return true }
 
+type noopMetricsObserver struct{}
+
+func (noopMetricsObserver) ObserveConnectionOpened()                         {}
+func (noopMetricsObserver) ObserveConnectionClosed()                         {}
+func (noopMetricsObserver) ObserveAuthAttempt(bool)                          {}
+func (noopMetricsObserver) ObserveProxyTrafficBytes(int64)                   {}
+func (noopMetricsObserver) ObserveProxyTrafficBytesByUsername(string, int64) {}
+func (noopMetricsObserver) ObserveDroppedRedisUpdate(string)                 {}
+
 type listenerStub struct {
 	conn net.Conn
 }
@@ -356,3 +516,35 @@ func (c *connStub) RemoteAddr() net.Addr               { return &net.TCPAddr{} }
 func (c *connStub) SetDeadline(t time.Time) error      { c.deadline = t; return nil }
 func (c *connStub) SetReadDeadline(t time.Time) error  { c.deadline = t; return nil }
 func (c *connStub) SetWriteDeadline(t time.Time) error { c.deadline = t; return nil }
+
+type deadlineTrackingConnStub struct {
+	readDeadline  time.Time
+	writeDeadline time.Time
+}
+
+func (c *deadlineTrackingConnStub) Read(p []byte) (int, error) {
+	if len(p) == 0 {
+		return 0, nil
+	}
+
+	p[0] = 'a'
+
+	return 1, nil
+}
+
+func (c *deadlineTrackingConnStub) Write(p []byte) (int, error) {
+	return len(p), nil
+}
+
+func (c *deadlineTrackingConnStub) Close() error         { return nil }
+func (c *deadlineTrackingConnStub) LocalAddr() net.Addr  { return &net.TCPAddr{} }
+func (c *deadlineTrackingConnStub) RemoteAddr() net.Addr { return &net.TCPAddr{} }
+func (c *deadlineTrackingConnStub) SetDeadline(t time.Time) error {
+	c.readDeadline, c.writeDeadline = t, t
+	return nil
+}
+func (c *deadlineTrackingConnStub) SetReadDeadline(t time.Time) error { c.readDeadline = t; return nil }
+func (c *deadlineTrackingConnStub) SetWriteDeadline(t time.Time) error {
+	c.writeDeadline = t
+	return nil
+}

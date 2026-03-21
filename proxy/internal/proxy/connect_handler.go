@@ -98,17 +98,17 @@ func (h *connectHandler) prepareProxyStreams(
 	}
 
 	clientDeadline := newIdleDeadlineController(clientConn, h.idleTimeout)
-	if err := clientDeadline.Extend(); err != nil {
+	if err := clientDeadline.ExtendAll(); err != nil {
 		return proxyStreams{}, fmt.Errorf("failed to set client idle deadline: %w", err)
 	}
 
 	streams.clientReader = &idleDeadlineReader{
 		reader: reader,
-		touch:  clientDeadline.Extend,
+		touch:  clientDeadline.ExtendRead,
 	}
 	streams.clientWriter = &idleDeadlineWriter{
 		writer: writer,
-		touch:  clientDeadline.Extend,
+		touch:  clientDeadline.ExtendWrite,
 	}
 
 	idleTarget, err := newIdleDeadlineConn(target, h.idleTimeout)
@@ -145,12 +145,13 @@ func proxyBidirectional(clientConn net.Conn, clientWriter io.Writer, clientReade
 	}()
 
 	firstErr := <-errCh
+	if firstErr != nil {
+		if clientConn != nil {
+			_ = clientConn.Close()
+		}
 
-	if clientConn != nil {
-		_ = clientConn.Close()
+		_ = target.Close()
 	}
-
-	_ = target.Close()
 
 	secondErr := <-errCh
 
@@ -231,7 +232,7 @@ func newIdleDeadlineController(conn net.Conn, timeout time.Duration) *idleDeadli
 	}
 }
 
-func (c *idleDeadlineController) Extend() error {
+func (c *idleDeadlineController) ExtendAll() error {
 	if c == nil || c.conn == nil || c.timeout <= 0 {
 		return nil
 	}
@@ -239,12 +240,39 @@ func (c *idleDeadlineController) Extend() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	return c.conn.SetDeadline(time.Now().Add(c.timeout))
+	deadline := time.Now().Add(c.timeout)
+	if err := c.conn.SetReadDeadline(deadline); err != nil {
+		return err
+	}
+
+	return c.conn.SetWriteDeadline(deadline)
+}
+
+func (c *idleDeadlineController) ExtendRead() error {
+	if c == nil || c.conn == nil || c.timeout <= 0 {
+		return nil
+	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	return c.conn.SetReadDeadline(time.Now().Add(c.timeout))
+}
+
+func (c *idleDeadlineController) ExtendWrite() error {
+	if c == nil || c.conn == nil || c.timeout <= 0 {
+		return nil
+	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	return c.conn.SetWriteDeadline(time.Now().Add(c.timeout))
 }
 
 func newIdleDeadlineConn(conn net.Conn, timeout time.Duration) (net.Conn, error) {
 	controller := newIdleDeadlineController(conn, timeout)
-	if err := controller.Extend(); err != nil {
+	if err := controller.ExtendAll(); err != nil {
 		return nil, err
 	}
 
@@ -262,7 +290,7 @@ type idleDeadlineConn struct {
 func (c *idleDeadlineConn) Read(p []byte) (int, error) {
 	n, err := c.Conn.Read(p)
 	if n > 0 {
-		if touchErr := c.controller.Extend(); touchErr != nil && err == nil {
+		if touchErr := c.controller.ExtendRead(); touchErr != nil && err == nil {
 			err = touchErr
 		}
 	}
@@ -273,12 +301,21 @@ func (c *idleDeadlineConn) Read(p []byte) (int, error) {
 func (c *idleDeadlineConn) Write(p []byte) (int, error) {
 	n, err := c.Conn.Write(p)
 	if n > 0 {
-		if touchErr := c.controller.Extend(); touchErr != nil && err == nil {
+		if touchErr := c.controller.ExtendWrite(); touchErr != nil && err == nil {
 			err = touchErr
 		}
 	}
 
 	return n, err
+}
+
+func (c *idleDeadlineConn) CloseWrite() error {
+	writer, ok := c.Conn.(interface{ CloseWrite() error })
+	if !ok {
+		return nil
+	}
+
+	return writer.CloseWrite()
 }
 
 type idleDeadlineReader struct {
@@ -311,4 +348,13 @@ func (w *idleDeadlineWriter) Write(p []byte) (int, error) {
 	}
 
 	return n, err
+}
+
+func (w *idleDeadlineWriter) CloseWrite() error {
+	writer, ok := w.writer.(interface{ CloseWrite() error })
+	if !ok {
+		return nil
+	}
+
+	return writer.CloseWrite()
 }
