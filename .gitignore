@@ -2,3 +2,4 @@
 .env
 data
 ssl
+.DS_Store
