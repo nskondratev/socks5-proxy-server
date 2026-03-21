@@ -67,7 +67,7 @@ func TestRuntimeAndCustomMetricsExposed(t *testing.T) {
 	m.ObserveConnectionOpened()
 	m.ObserveConnectionClosed()
 
-	req := httptest.NewRequest(http.MethodGet, "/metrics", http.NoBody)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/metrics", http.NoBody)
 	rec := httptest.NewRecorder()
 	m.server.Handler.ServeHTTP(rec, req)
 
@@ -96,7 +96,7 @@ func TestMetricsAuth(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("unauthorized without credentials", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/metrics", http.NoBody)
+		req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/metrics", http.NoBody)
 		rec := httptest.NewRecorder()
 
 		m.server.Handler.ServeHTTP(rec, req)
@@ -106,7 +106,7 @@ func TestMetricsAuth(t *testing.T) {
 	})
 
 	t.Run("unauthorized with invalid credentials", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/metrics", http.NoBody)
+		req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/metrics", http.NoBody)
 		req.SetBasicAuth("metrics", "bad")
 		rec := httptest.NewRecorder()
 
@@ -116,7 +116,7 @@ func TestMetricsAuth(t *testing.T) {
 	})
 
 	t.Run("authorized", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/metrics", http.NoBody)
+		req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/metrics", http.NoBody)
 		req.SetBasicAuth("metrics", "secret")
 		rec := httptest.NewRecorder()
 
@@ -141,7 +141,7 @@ func TestInstrumentAuthValidator(t *testing.T) {
 	require.NotNil(t, instrumented)
 	assert.True(t, instrumented.Valid("alice", "secret", "127.0.0.1"))
 
-	req := httptest.NewRequest(http.MethodGet, "/metrics", http.NoBody)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/metrics", http.NoBody)
 	rec := httptest.NewRecorder()
 	m.server.Handler.ServeHTTP(rec, req)
 
