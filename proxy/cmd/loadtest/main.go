@@ -85,26 +85,37 @@ type report struct {
 }
 
 func main() {
+	if err := run(); err != nil {
+		exitErr(err)
+	}
+}
+
+func run() error {
 	cfg, err := parseFlags()
 	if err != nil {
-		exitErr(err)
+		return err
+	}
+
+	cfg, err = normalizeLocalSinkTarget(cfg)
+	if err != nil {
+		return err
 	}
 
 	if cfg.UseLocalSink {
 		sinkAddr, err := sinkListenAddr(cfg.TargetAddr)
 		if err != nil {
-			exitErr(fmt.Errorf("failed to resolve local sink bind address from target %q: %w", cfg.TargetAddr, err))
+			return fmt.Errorf("failed to resolve local sink bind address from target %q: %w", cfg.TargetAddr, err)
 		}
 
 		stopSink, err := runLocalSink(sinkAddr)
 		if err != nil {
-			exitErr(fmt.Errorf("failed to run local sink server on %s: %w", sinkAddr, err))
+			return fmt.Errorf("failed to run local sink server on %s: %w", sinkAddr, err)
 		}
 		defer stopSink()
 	}
 
 	if err := os.MkdirAll(cfg.ReportDir, 0o755); err != nil {
-		exitErr(fmt.Errorf("failed to create report dir: %w", err))
+		return fmt.Errorf("failed to create report dir: %w", err)
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -135,10 +146,20 @@ func main() {
 
 	timestamp := time.Now().Format("20060102-150405")
 	if err := writeReports(cfg.ReportDir, timestamp, rep); err != nil {
-		exitErr(fmt.Errorf("failed to write reports: %w", err))
+		return fmt.Errorf("failed to write reports: %w", err)
 	}
 
-	fmt.Fprintf(os.Stdout, "Load test finished. Reports written to %s\n", cfg.ReportDir)
+	printRunSummary(cfg.ReportDir, rep)
+
+	if runErr != nil {
+		return runErr
+	}
+
+	return nil
+}
+
+func printRunSummary(reportDir string, rep report) {
+	fmt.Fprintf(os.Stdout, "Load test finished. Reports written to %s\n", reportDir)
 	fmt.Fprintf(
 		os.Stdout,
 		"Completed: %d, Failed: %d, Max simultaneous: %d\n",
@@ -160,10 +181,6 @@ func main() {
 		rep.ThroughputTotalMBSec,
 		rep.ThroughputPerConnMBSec,
 	)
-
-	if runErr != nil {
-		exitErr(runErr)
-	}
 }
 
 func parseFlags() (config, error) {
@@ -196,6 +213,127 @@ func parseFlags() (config, error) {
 	}
 
 	return cfg, nil
+}
+
+func normalizeLocalSinkTarget(cfg config) (config, error) {
+	if !cfg.UseLocalSink {
+		return cfg, nil
+	}
+
+	targetAddr, rewritten, err := rewriteLocalSinkTarget(cfg.TargetAddr)
+	if err != nil {
+		return cfg, err
+	}
+	if !rewritten {
+		return cfg, nil
+	}
+
+	cfg.TargetAddr = targetAddr
+	return cfg, nil
+}
+
+func rewriteLocalSinkTarget(targetAddr string) (string, bool, error) {
+	host, _, err := net.SplitHostPort(targetAddr)
+	if err != nil {
+		return "", false, fmt.Errorf("split local sink target address: %w", err)
+	}
+	if !shouldRewriteLocalSinkHost(host) {
+		return targetAddr, false, nil
+	}
+
+	hostIP, err := detectLocalIPv4()
+	if err != nil {
+		return "", false, fmt.Errorf("detect local sink host IP: %w", err)
+	}
+
+	return rewriteLocalSinkTargetWithIP(targetAddr, hostIP)
+}
+
+func rewriteLocalSinkTargetWithIP(targetAddr, hostIP string) (string, bool, error) {
+	host, port, err := net.SplitHostPort(targetAddr)
+	if err != nil {
+		return "", false, fmt.Errorf("split local sink target address: %w", err)
+	}
+	if !shouldRewriteLocalSinkHost(host) {
+		return targetAddr, false, nil
+	}
+
+	return net.JoinHostPort(hostIP, port), true, nil
+}
+
+func shouldRewriteLocalSinkHost(host string) bool {
+	switch host {
+	case "host.docker.internal", "localhost", "127.0.0.1", "0.0.0.0", "::1":
+		return true
+	default:
+		return false
+	}
+}
+
+func detectLocalIPv4() (string, error) {
+	if ip, ok := detectDialLocalIPv4(); ok {
+		return ip, nil
+	}
+
+	if ip, ok := detectInterfaceLocalIPv4(); ok {
+		return ip, nil
+	}
+
+	return "", errors.New("no active non-loopback IPv4 address found")
+}
+
+func detectDialLocalIPv4() (string, bool) {
+	conn, err := net.Dial("udp4", "192.0.2.1:80")
+	if err != nil {
+		return "", false
+	}
+	defer conn.Close()
+
+	localAddr, ok := conn.LocalAddr().(*net.UDPAddr)
+	if !ok {
+		return "", false
+	}
+
+	ip := localAddr.IP.To4()
+	if ip == nil || ip.IsLoopback() {
+		return "", false
+	}
+
+	return ip.String(), true
+}
+
+func detectInterfaceLocalIPv4() (string, bool) {
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		return "", false
+	}
+
+	for _, iface := range ifaces {
+		if iface.Flags&net.FlagUp == 0 || iface.Flags&net.FlagLoopback != 0 {
+			continue
+		}
+
+		addrs, err := iface.Addrs()
+		if err != nil {
+			continue
+		}
+
+		for _, addr := range addrs {
+			ipNet, ok := addr.(*net.IPNet)
+			if !ok {
+				continue
+			}
+
+			ip := ipNet.IP.To4()
+			if ip == nil || ip.IsLoopback() {
+				continue
+			}
+
+			return ip.String(), true
+		}
+	}
+
+	return "", false
 }
 
 func runLoad(cfg config) ([]connectionSample, int64, error) {

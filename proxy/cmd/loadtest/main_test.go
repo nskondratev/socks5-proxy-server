@@ -132,6 +132,35 @@ func TestSinkListenAddr(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestRewriteLocalSinkTarget(t *testing.T) {
+	t.Run("rewrites container host alias", func(t *testing.T) {
+		targetAddr, rewritten, err := rewriteLocalSinkTargetWithIP("host.docker.internal:18080", "127.0.0.1")
+		require.NoError(t, err)
+		require.True(t, rewritten)
+		assert.Equal(t, "127.0.0.1:18080", targetAddr)
+	})
+
+	t.Run("keeps explicit remote host", func(t *testing.T) {
+		targetAddr, rewritten, err := rewriteLocalSinkTargetWithIP("example.com:18080", "127.0.0.1")
+		require.NoError(t, err)
+		require.False(t, rewritten)
+		assert.Equal(t, "example.com:18080", targetAddr)
+	})
+
+	t.Run("rejects invalid target", func(t *testing.T) {
+		_, _, err := rewriteLocalSinkTargetWithIP("bad", "127.0.0.1")
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "split local sink target address")
+	})
+}
+
+func TestShouldRewriteLocalSinkHost(t *testing.T) {
+	assert.True(t, shouldRewriteLocalSinkHost("host.docker.internal"))
+	assert.True(t, shouldRewriteLocalSinkHost("localhost"))
+	assert.True(t, shouldRewriteLocalSinkHost("127.0.0.1"))
+	assert.False(t, shouldRewriteLocalSinkHost("example.com"))
+}
+
 func TestBuildReport(t *testing.T) {
 	start := time.Now()
 	end := start.Add(10 * time.Second)
