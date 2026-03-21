@@ -385,6 +385,117 @@ func TestProxyHalfCloseAllowsReply(t *testing.T) {
 	<-targetDone
 }
 
+func TestProxyAssociateClearsHandshakeDeadline(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	listenCfg := net.ListenConfig{}
+
+	targetAddr := &net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 0}
+	targetConn, err := net.ListenUDP("udp", targetAddr)
+	if err != nil {
+		t.Fatalf("failed to start udp target: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = targetConn.Close()
+	})
+
+	targetDone := make(chan struct{})
+	go func() {
+		defer close(targetDone)
+
+		buf := make([]byte, 1024)
+		n, remote, readErr := targetConn.ReadFromUDP(buf)
+		if readErr != nil {
+			return
+		}
+
+		if string(buf[:n]) != "ping" {
+			t.Errorf("unexpected udp payload: %q", string(buf[:n]))
+			return
+		}
+
+		if _, writeErr := targetConn.WriteToUDP([]byte("pong"), remote); writeErr != nil {
+			t.Errorf("WriteToUDP() unexpected error: %v", writeErr)
+		}
+	}()
+
+	clientAddr := &net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 0}
+	clientConn, err := net.ListenUDP("udp", clientAddr)
+	if err != nil {
+		t.Fatalf("failed to start udp client: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = clientConn.Close()
+	})
+
+	server, err := NewServer(NewServerParams{})
+	if err != nil {
+		t.Fatalf("NewServer() unexpected error: %v", err)
+	}
+
+	proxyListener, err := listenCfg.Listen(ctx, "tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("failed to start proxy listener: %v", err)
+	}
+	proxyListener = WrapListenerWithHandshakeTimeout(proxyListener, 100*time.Millisecond)
+	t.Cleanup(func() {
+		_ = proxyListener.Close()
+	})
+
+	proxyDone := make(chan struct{})
+	go func() {
+		defer close(proxyDone)
+		_ = server.Serve(proxyListener)
+	}()
+
+	controlConn, relayAddr, err := dialViaSocks5AssociateNoAuth(
+		proxyListener.Addr().String(),
+		clientConn.LocalAddr().(*net.UDPAddr),
+		time.Second,
+	)
+	if err != nil {
+		t.Fatalf("failed to establish udp associate: %v", err)
+	}
+	defer func() {
+		_ = controlConn.Close()
+	}()
+
+	time.Sleep(250 * time.Millisecond)
+
+	packet, err := statute.NewDatagram(targetConn.LocalAddr().String(), []byte("ping"))
+	if err != nil {
+		t.Fatalf("NewDatagram() unexpected error: %v", err)
+	}
+
+	if _, err := clientConn.WriteToUDP(packet.Bytes(), relayAddr); err != nil {
+		t.Fatalf("WriteToUDP() unexpected error: %v", err)
+	}
+
+	if err := clientConn.SetReadDeadline(time.Now().Add(time.Second)); err != nil {
+		t.Fatalf("SetReadDeadline() unexpected error: %v", err)
+	}
+
+	buf := make([]byte, 1024)
+	n, _, err := clientConn.ReadFromUDP(buf)
+	if err != nil {
+		t.Fatalf("ReadFromUDP() unexpected error: %v", err)
+	}
+
+	response, err := statute.ParseDatagram(buf[:n])
+	if err != nil {
+		t.Fatalf("ParseDatagram() unexpected error: %v", err)
+	}
+
+	if string(response.Data) != "pong" {
+		t.Fatalf("unexpected udp response: %q", string(response.Data))
+	}
+
+	_ = proxyListener.Close()
+	<-proxyDone
+	<-targetDone
+}
+
 func dialViaSocks5NoAuth(proxyAddr, targetAddr string, timeout time.Duration) (net.Conn, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
@@ -417,6 +528,45 @@ func dialViaSocks5NoAuth(proxyAddr, targetAddr string, timeout time.Duration) (n
 	}
 
 	return conn, nil
+}
+
+func dialViaSocks5AssociateNoAuth(
+	proxyAddr string,
+	clientAddr *net.UDPAddr,
+	timeout time.Duration,
+) (net.Conn, *net.UDPAddr, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	dialer := &net.Dialer{Timeout: timeout}
+
+	conn, err := dialer.DialContext(ctx, "tcp", proxyAddr)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if err = conn.SetDeadline(time.Now().Add(timeout)); err != nil {
+		_ = conn.Close()
+		return nil, nil, err
+	}
+
+	if err = socks5NoAuthGreeting(conn); err != nil {
+		_ = conn.Close()
+		return nil, nil, err
+	}
+
+	relayAddr, err := socks5Associate(conn, clientAddr)
+	if err != nil {
+		_ = conn.Close()
+		return nil, nil, err
+	}
+
+	if err = conn.SetDeadline(time.Time{}); err != nil {
+		_ = conn.Close()
+		return nil, nil, err
+	}
+
+	return conn, relayAddr, nil
 }
 
 func socks5NoAuthGreeting(conn net.Conn) error {
@@ -479,6 +629,40 @@ func socks5Connect(conn net.Conn, targetAddr string) error {
 	}
 
 	return nil
+}
+
+func socks5Associate(conn net.Conn, clientAddr *net.UDPAddr) (*net.UDPAddr, error) {
+	ip := clientAddr.IP.To4()
+	if ip == nil {
+		return nil, errors.New("only ipv4 is supported in test helper")
+	}
+
+	if clientAddr.Port < 0 || clientAddr.Port > 65535 {
+		return nil, fmt.Errorf("invalid client udp port: %d", clientAddr.Port)
+	}
+
+	req := []byte{0x05, 0x03, 0x00, 0x01}
+	req = append(req, ip...)
+	req = binary.BigEndian.AppendUint16(req, uint16(clientAddr.Port))
+
+	if _, err := conn.Write(req); err != nil {
+		return nil, err
+	}
+
+	reply, err := statute.ParseReply(conn)
+	if err != nil {
+		return nil, err
+	}
+
+	if reply.Version != 0x05 {
+		return nil, fmt.Errorf("unexpected SOCKS version: %d", reply.Version)
+	}
+
+	if reply.Response != 0x00 {
+		return nil, fmt.Errorf("associate failed with status %d", reply.Response)
+	}
+
+	return &net.UDPAddr{IP: reply.BndAddr.IP, Port: reply.BndAddr.Port}, nil
 }
 
 type timeoutError struct{}

@@ -86,7 +86,7 @@ func (h *connectHandler) prepareProxyStreams(
 			return streams, nil
 		}
 
-		if err := clientConn.SetDeadline(time.Time{}); err != nil {
+		if err := clearHandshakeDeadline(clientConn); err != nil {
 			return proxyStreams{}, fmt.Errorf("failed to clear client handshake deadline: %w", err)
 		}
 
@@ -217,6 +217,23 @@ func (l *handshakeTimeoutListener) Accept() (net.Conn, error) {
 	}
 
 	return conn, nil
+}
+
+func clearHandshakeDeadlineMiddleware(_ context.Context, writer io.Writer, _ *socks5.Request) error {
+	conn, ok := writer.(net.Conn)
+	if !ok {
+		return nil
+	}
+
+	return clearHandshakeDeadline(conn)
+}
+
+func clearHandshakeDeadline(conn net.Conn) error {
+	if conn == nil {
+		return nil
+	}
+
+	return conn.SetDeadline(time.Time{})
 }
 
 type idleDeadlineController struct {
