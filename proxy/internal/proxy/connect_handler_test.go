@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	"bytes"
 	"context"
 	"encoding/binary"
 	"errors"
@@ -8,9 +9,12 @@ import (
 	"io"
 	"net"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/things-go/go-socks5"
+	"github.com/things-go/go-socks5/bufferpool"
 	"github.com/things-go/go-socks5/statute"
 )
 
@@ -79,6 +83,66 @@ func TestNormalizeProxyCopyError(t *testing.T) {
 				t.Fatal("normalizeProxyCopyError() = nil, want error")
 			}
 		})
+	}
+}
+
+func TestProxyCopyUsesBufferPoolAndClosesWrite(t *testing.T) {
+	t.Parallel()
+
+	dst := &closeWriteBuffer{}
+	src := bytes.NewBufferString("ping")
+	pool := &trackingBufferPool{
+		buf: make([]byte, 0, 8),
+	}
+
+	if err := proxyCopyWithBufferPool(dst, src, pool); err != nil {
+		t.Fatalf("proxyCopyWithBufferPool() unexpected error: %v", err)
+	}
+
+	if got := dst.String(); got != "ping" {
+		t.Fatalf("unexpected copied payload: %q", got)
+	}
+
+	if !dst.closeWriteCalled {
+		t.Fatal("CloseWrite() was not called on destination")
+	}
+
+	if pool.getCalls != 1 || pool.putCalls != 1 {
+		t.Fatalf("unexpected pool usage: get=%d put=%d", pool.getCalls, pool.putCalls)
+	}
+}
+
+func TestReplyDialErrorClearsExpiredHandshakeDeadline(t *testing.T) {
+	t.Parallel()
+
+	conn := &deadlineAwareConnStub{}
+	if err := conn.SetDeadline(time.Now().Add(-time.Second)); err != nil {
+		t.Fatalf("SetDeadline() unexpected error: %v", err)
+	}
+
+	req := &socks5.Request{
+		RawDestAddr: &statute.AddrSpec{
+			IP:       net.ParseIP("127.0.0.1"),
+			Port:     1080,
+			AddrType: statute.ATYPIPv4,
+		},
+	}
+
+	err := replyDialError(conn, req, errors.New("dial tcp: i/o timeout"))
+	if err == nil {
+		t.Fatal("replyDialError() expected error")
+	}
+
+	if strings.Contains(err.Error(), "failed to send reply") {
+		t.Fatalf("replyDialError() returned send failure: %v", err)
+	}
+
+	if len(conn.writes) == 0 {
+		t.Fatal("reply was not written to connection")
+	}
+
+	if !conn.deadline.IsZero() {
+		t.Fatalf("deadline was not cleared: %v", conn.deadline)
 	}
 }
 
@@ -700,6 +764,49 @@ func (c *connStub) RemoteAddr() net.Addr               { return &net.TCPAddr{} }
 func (c *connStub) SetDeadline(t time.Time) error      { c.deadline = t; return nil }
 func (c *connStub) SetReadDeadline(t time.Time) error  { c.deadline = t; return nil }
 func (c *connStub) SetWriteDeadline(t time.Time) error { c.deadline = t; return nil }
+
+type deadlineAwareConnStub struct {
+	connStub
+	writes [][]byte
+}
+
+func (c *deadlineAwareConnStub) Write(p []byte) (int, error) {
+	if !c.deadline.IsZero() && time.Now().After(c.deadline) {
+		return 0, &timeoutError{}
+	}
+
+	c.writes = append(c.writes, append([]byte(nil), p...))
+
+	return len(p), nil
+}
+
+type closeWriteBuffer struct {
+	bytes.Buffer
+	closeWriteCalled bool
+}
+
+func (b *closeWriteBuffer) CloseWrite() error {
+	b.closeWriteCalled = true
+	return nil
+}
+
+type trackingBufferPool struct {
+	buf      []byte
+	getCalls int
+	putCalls int
+}
+
+var _ bufferpool.BufPool = (*trackingBufferPool)(nil)
+
+func (p *trackingBufferPool) Get() []byte {
+	p.getCalls++
+	return p.buf
+}
+
+func (p *trackingBufferPool) Put(buf []byte) {
+	p.putCalls++
+	p.buf = buf[:0]
+}
 
 type deadlineTrackingConnStub struct {
 	readDeadline  time.Time

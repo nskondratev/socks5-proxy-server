@@ -11,8 +11,13 @@ import (
 	"time"
 
 	"github.com/things-go/go-socks5"
+	"github.com/things-go/go-socks5/bufferpool"
 	"github.com/things-go/go-socks5/statute"
 )
+
+const connectCopyBufferSize = 32 * 1024
+
+var connectCopyBufferPool = bufferpool.NewPool(connectCopyBufferSize)
 
 type connectHandler struct {
 	dial        func(ctx context.Context, network, addr string, request *socks5.Request) (net.Conn, error)
@@ -60,6 +65,12 @@ func (h *connectHandler) Handle(ctx context.Context, writer io.Writer, request *
 }
 
 func replyDialError(writer io.Writer, request *socks5.Request, err error) error {
+	if conn, ok := writer.(net.Conn); ok {
+		if clearErr := clearHandshakeDeadline(conn); clearErr != nil {
+			return fmt.Errorf("failed to clear client handshake deadline: %w", clearErr)
+		}
+	}
+
 	if replyErr := socks5.SendReply(writer, mapDialErrorToReply(err), nil); replyErr != nil {
 		return fmt.Errorf("failed to send reply: %w", replyErr)
 	}
@@ -163,7 +174,24 @@ func proxyBidirectional(clientConn net.Conn, clientWriter io.Writer, clientReade
 }
 
 func proxyCopy(dst io.Writer, src io.Reader) error {
-	_, err := io.Copy(dst, src)
+	return proxyCopyWithBufferPool(dst, src, connectCopyBufferPool)
+}
+
+func proxyCopyWithBufferPool(dst io.Writer, src io.Reader, pool bufferpool.BufPool) error {
+	var (
+		buf []byte
+		err error
+	)
+
+	if pool == nil {
+		_, err = io.Copy(dst, src)
+	} else {
+		buf = pool.Get()
+		defer pool.Put(buf)
+
+		_, err = io.CopyBuffer(dst, src, buf[:cap(buf)])
+	}
+
 	if tcpConn, ok := dst.(interface{ CloseWrite() error }); ok {
 		_ = tcpConn.CloseWrite()
 	}
