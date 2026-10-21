@@ -17,7 +17,7 @@ type redis interface {
 	HGetAll(ctx context.Context, key string) (map[string]string, error)
 	HSet(ctx context.Context, key string, values ...interface{}) error
 	HDel(ctx context.Context, key string, fields ...string) error
-	HIncrBy(ctx context.Context, key, field string, incr int64) error
+	HIncrByBatch(ctx context.Context, key string, increments map[string]int64) error
 	Del(ctx context.Context, keys ...string) error
 }
 
@@ -46,8 +46,9 @@ func (u *Users) UpdateLastAuthDate(ctx context.Context, userName string) error {
 	return nil
 }
 
-func (u *Users) IncreaseDataUsage(ctx context.Context, userName string, dataLen int64) error {
-	if err := u.redis.HIncrBy(ctx, userUsageDataKey, userName, dataLen); err != nil {
+// IncreaseDataUsageBatch increments data usage for several users at once (usage is username -> bytes).
+func (u *Users) IncreaseDataUsageBatch(ctx context.Context, usage map[string]int64) error {
+	if err := u.redis.HIncrByBatch(ctx, userUsageDataKey, usage); err != nil {
 		return fmt.Errorf("[users] failed to increase data usage: %w", err)
 	}
 

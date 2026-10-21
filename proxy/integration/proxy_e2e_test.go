@@ -22,7 +22,7 @@ import (
 func TestProxyE2E_NoAuth(t *testing.T) {
 	redis := newFakeRedis()
 	usersService := users.New(redis)
-	updatesManager := users.NewUpdatesManager(usersService, 64, 64)
+	updatesManager := users.NewUpdatesManager(usersService, 64, 20*time.Millisecond)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -69,7 +69,7 @@ func TestProxyE2E_NoAuth(t *testing.T) {
 func TestProxyE2E_WithAuth(t *testing.T) {
 	redis := newFakeRedis()
 	usersService := users.New(redis)
-	updatesManager := users.NewUpdatesManager(usersService, 64, 64)
+	updatesManager := users.NewUpdatesManager(usersService, 64, 20*time.Millisecond)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -156,7 +156,7 @@ func startProxyServer(
 			}
 
 			return proxyadapter.NewUsageTrackedConn(conn, func(dataLen int64) {
-				_ = updatesManager.EnqueueUsageUpdate(username, dataLen)
+				updatesManager.AddUsage(username, dataLen)
 			}), nil
 		}),
 	}

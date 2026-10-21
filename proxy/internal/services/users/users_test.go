@@ -8,12 +8,12 @@ import (
 )
 
 type redisStub struct {
-	hgetFn    func(ctx context.Context, key, field string) (string, error)
-	hgetAllFn func(ctx context.Context, key string) (map[string]string, error)
-	hsetFn    func(ctx context.Context, key string, values ...interface{}) error
-	hdelFn    func(ctx context.Context, key string, fields ...string) error
-	hincrByFn func(ctx context.Context, key, field string, incr int64) error
-	delFn     func(ctx context.Context, keys ...string) error
+	hgetFn         func(ctx context.Context, key, field string) (string, error)
+	hgetAllFn      func(ctx context.Context, key string) (map[string]string, error)
+	hsetFn         func(ctx context.Context, key string, values ...interface{}) error
+	hdelFn         func(ctx context.Context, key string, fields ...string) error
+	hincrByBatchFn func(ctx context.Context, key string, increments map[string]int64) error
+	delFn          func(ctx context.Context, keys ...string) error
 }
 
 func (r *redisStub) HGet(ctx context.Context, key, field string) (string, error) {
@@ -40,8 +40,8 @@ func (r *redisStub) HDel(ctx context.Context, key string, fields ...string) erro
 	return r.hdelFn(ctx, key, fields...)
 }
 
-func (r *redisStub) HIncrBy(ctx context.Context, key, field string, incr int64) error {
-	return r.hincrByFn(ctx, key, field, incr)
+func (r *redisStub) HIncrByBatch(ctx context.Context, key string, increments map[string]int64) error {
+	return r.hincrByBatchFn(ctx, key, increments)
 }
 
 func (r *redisStub) Del(ctx context.Context, keys ...string) error {
@@ -161,53 +161,47 @@ func TestUpdateLastAuthDate(t *testing.T) {
 	})
 }
 
-func TestIncreaseDataUsage(t *testing.T) {
+func TestIncreaseDataUsageBatch(t *testing.T) {
 	t.Parallel()
 
 	t.Run("success", func(t *testing.T) {
 		t.Parallel()
 
 		var (
-			gotKey   string
-			gotField string
-			gotIncr  int64
+			gotKey        string
+			gotIncrements map[string]int64
 		)
 
-		u := New(&redisStub{hincrByFn: func(_ context.Context, key, field string, incr int64) error {
+		u := New(&redisStub{hincrByBatchFn: func(_ context.Context, key string, increments map[string]int64) error {
 			gotKey = key
-			gotField = field
-			gotIncr = incr
+			gotIncrements = increments
 			return nil
 		}})
 
-		err := u.IncreaseDataUsage(context.Background(), "alice", 512)
+		err := u.IncreaseDataUsageBatch(context.Background(), map[string]int64{"alice": 512, "bob": 64})
 		if err != nil {
-			t.Fatalf("IncreaseDataUsage() unexpected error: %v", err)
+			t.Fatalf("IncreaseDataUsageBatch() unexpected error: %v", err)
 		}
 
 		if gotKey != userUsageDataKey {
-			t.Fatalf("HIncrBy key = %q, want %q", gotKey, userUsageDataKey)
+			t.Fatalf("HIncrByBatch key = %q, want %q", gotKey, userUsageDataKey)
 		}
 
-		if gotField != "alice" {
-			t.Fatalf("HIncrBy field = %q, want alice", gotField)
-		}
-
-		if gotIncr != 512 {
-			t.Fatalf("HIncrBy incr = %d, want 512", gotIncr)
+		if len(gotIncrements) != 2 || gotIncrements["alice"] != 512 || gotIncrements["bob"] != 64 {
+			t.Fatalf("HIncrByBatch increments = %v, want alice=512 bob=64", gotIncrements)
 		}
 	})
 
 	t.Run("redis error", func(t *testing.T) {
 		t.Parallel()
 
-		u := New(&redisStub{hincrByFn: func(_ context.Context, _, _ string, _ int64) error {
+		u := New(&redisStub{hincrByBatchFn: func(_ context.Context, _ string, _ map[string]int64) error {
 			return errors.New("write failed")
 		}})
 
-		err := u.IncreaseDataUsage(context.Background(), "alice", 512)
+		err := u.IncreaseDataUsageBatch(context.Background(), map[string]int64{"alice": 512})
 		if err == nil {
-			t.Fatal("IncreaseDataUsage() expected error, got nil")
+			t.Fatal("IncreaseDataUsageBatch() expected error, got nil")
 		}
 	})
 }

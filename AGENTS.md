@@ -9,7 +9,7 @@
 - Starts a SOCKS5 proxy with optional authentication when `REQUIRE_AUTH=1`.
 - Validates credentials against Redis hash `user_auth`, using bcrypt to compare passwords.
 - Uses in-memory auth cache (`AUTH_CACHE_MAX_SIZE`, `AUTH_CACHE_TTL`) to reduce Redis/bcrypt load.
-- Tracks per-user data usage in Redis on each proxied data event.
+- Aggregates per-user data usage in memory and flushes it to Redis in batches (`REDIS_USAGE_FLUSH_INTERVAL`).
 - Updates last-auth timestamps via async Redis update queues.
 - Runs a monthly job (`0 0 1 * *`) to clear data-usage stats.
 - Exposes optional Prometheus metrics (`METRICS_*`) with optional HTTP Basic Auth.

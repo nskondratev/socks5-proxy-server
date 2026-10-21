@@ -42,8 +42,8 @@ func RedisAuthUpdatesQueueSize() int {
 	return env.Int("REDIS_AUTH_UPDATES_QUEUE_SIZE", 4096)
 }
 
-func RedisUsageUpdatesQueueSize() int {
-	return env.Int("REDIS_USAGE_UPDATES_QUEUE_SIZE", 16384)
+func RedisUsageFlushInterval() time.Duration {
+	return env.Duration("REDIS_USAGE_FLUSH_INTERVAL", time.Second)
 }
 
 func LogLevel() string {

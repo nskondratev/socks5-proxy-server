@@ -51,12 +51,12 @@ type RedisMock struct {
 	beforeHGetAllCounter uint64
 	HGetAllMock          mRedisMockHGetAll
 
-	funcHIncrBy          func(ctx context.Context, key string, field string, incr int64) (err error)
-	funcHIncrByOrigin    string
-	inspectFuncHIncrBy   func(ctx context.Context, key string, field string, incr int64)
-	afterHIncrByCounter  uint64
-	beforeHIncrByCounter uint64
-	HIncrByMock          mRedisMockHIncrBy
+	funcHIncrByBatch          func(ctx context.Context, key string, increments map[string]int64) (err error)
+	funcHIncrByBatchOrigin    string
+	inspectFuncHIncrByBatch   func(ctx context.Context, key string, increments map[string]int64)
+	afterHIncrByBatchCounter  uint64
+	beforeHIncrByBatchCounter uint64
+	HIncrByBatchMock          mRedisMockHIncrByBatch
 
 	funcHSet          func(ctx context.Context, key string, values ...interface{}) (err error)
 	funcHSetOrigin    string
@@ -89,8 +89,8 @@ func NewRedisMock(t minimock.Tester) *RedisMock {
 	m.HGetAllMock = mRedisMockHGetAll{mock: m}
 	m.HGetAllMock.callArgs = []*RedisMockHGetAllParams{}
 
-	m.HIncrByMock = mRedisMockHIncrBy{mock: m}
-	m.HIncrByMock.callArgs = []*RedisMockHIncrByParams{}
+	m.HIncrByBatchMock = mRedisMockHIncrByBatch{mock: m}
+	m.HIncrByBatchMock.callArgs = []*RedisMockHIncrByBatchParams{}
 
 	m.HSetMock = mRedisMockHSet{mock: m}
 	m.HSetMock.callArgs = []*RedisMockHSetParams{}
@@ -1906,58 +1906,55 @@ func (m *RedisMock) MinimockHGetAllInspect() {
 	}
 }
 
-type mRedisMockHIncrBy struct {
+type mRedisMockHIncrByBatch struct {
 	optional           bool
 	mock               *RedisMock
-	defaultExpectation *RedisMockHIncrByExpectation
-	expectations       []*RedisMockHIncrByExpectation
+	defaultExpectation *RedisMockHIncrByBatchExpectation
+	expectations       []*RedisMockHIncrByBatchExpectation
 
-	callArgs []*RedisMockHIncrByParams
+	callArgs []*RedisMockHIncrByBatchParams
 	mutex    sync.RWMutex
 
 	expectedInvocations       uint64
 	expectedInvocationsOrigin string
 }
 
-// RedisMockHIncrByExpectation specifies expectation struct of the redis.HIncrBy
-type RedisMockHIncrByExpectation struct {
+// RedisMockHIncrByBatchExpectation specifies expectation struct of the redis.HIncrByBatch
+type RedisMockHIncrByBatchExpectation struct {
 	mock               *RedisMock
-	params             *RedisMockHIncrByParams
-	paramPtrs          *RedisMockHIncrByParamPtrs
-	expectationOrigins RedisMockHIncrByExpectationOrigins
-	results            *RedisMockHIncrByResults
+	params             *RedisMockHIncrByBatchParams
+	paramPtrs          *RedisMockHIncrByBatchParamPtrs
+	expectationOrigins RedisMockHIncrByBatchExpectationOrigins
+	results            *RedisMockHIncrByBatchResults
 	returnOrigin       string
 	Counter            uint64
 }
 
-// RedisMockHIncrByParams contains parameters of the redis.HIncrBy
-type RedisMockHIncrByParams struct {
-	ctx   context.Context
-	key   string
-	field string
-	incr  int64
+// RedisMockHIncrByBatchParams contains parameters of the redis.HIncrByBatch
+type RedisMockHIncrByBatchParams struct {
+	ctx        context.Context
+	key        string
+	increments map[string]int64
 }
 
-// RedisMockHIncrByParamPtrs contains pointers to parameters of the redis.HIncrBy
-type RedisMockHIncrByParamPtrs struct {
-	ctx   *context.Context
-	key   *string
-	field *string
-	incr  *int64
+// RedisMockHIncrByBatchParamPtrs contains pointers to parameters of the redis.HIncrByBatch
+type RedisMockHIncrByBatchParamPtrs struct {
+	ctx        *context.Context
+	key        *string
+	increments *map[string]int64
 }
 
-// RedisMockHIncrByResults contains results of the redis.HIncrBy
-type RedisMockHIncrByResults struct {
+// RedisMockHIncrByBatchResults contains results of the redis.HIncrByBatch
+type RedisMockHIncrByBatchResults struct {
 	err error
 }
 
-// RedisMockHIncrByOrigins contains origins of expectations of the redis.HIncrBy
-type RedisMockHIncrByExpectationOrigins struct {
-	origin      string
-	originCtx   string
-	originKey   string
-	originField string
-	originIncr  string
+// RedisMockHIncrByBatchOrigins contains origins of expectations of the redis.HIncrByBatch
+type RedisMockHIncrByBatchExpectationOrigins struct {
+	origin           string
+	originCtx        string
+	originKey        string
+	originIncrements string
 }
 
 // Marks this method to be optional. The default behavior of any method with Return() is '1 or more', meaning
@@ -1965,348 +1962,320 @@ type RedisMockHIncrByExpectationOrigins struct {
 // Optional() makes method check to work in '0 or more' mode.
 // It is NOT RECOMMENDED to use this option unless you really need it, as default behaviour helps to
 // catch the problems when the expected method call is totally skipped during test run.
-func (mmHIncrBy *mRedisMockHIncrBy) Optional() *mRedisMockHIncrBy {
-	mmHIncrBy.optional = true
-	return mmHIncrBy
+func (mmHIncrByBatch *mRedisMockHIncrByBatch) Optional() *mRedisMockHIncrByBatch {
+	mmHIncrByBatch.optional = true
+	return mmHIncrByBatch
 }
 
-// Expect sets up expected params for redis.HIncrBy
-func (mmHIncrBy *mRedisMockHIncrBy) Expect(ctx context.Context, key string, field string, incr int64) *mRedisMockHIncrBy {
-	if mmHIncrBy.mock.funcHIncrBy != nil {
-		mmHIncrBy.mock.t.Fatalf("RedisMock.HIncrBy mock is already set by Set")
+// Expect sets up expected params for redis.HIncrByBatch
+func (mmHIncrByBatch *mRedisMockHIncrByBatch) Expect(ctx context.Context, key string, increments map[string]int64) *mRedisMockHIncrByBatch {
+	if mmHIncrByBatch.mock.funcHIncrByBatch != nil {
+		mmHIncrByBatch.mock.t.Fatalf("RedisMock.HIncrByBatch mock is already set by Set")
 	}
 
-	if mmHIncrBy.defaultExpectation == nil {
-		mmHIncrBy.defaultExpectation = &RedisMockHIncrByExpectation{}
+	if mmHIncrByBatch.defaultExpectation == nil {
+		mmHIncrByBatch.defaultExpectation = &RedisMockHIncrByBatchExpectation{}
 	}
 
-	if mmHIncrBy.defaultExpectation.paramPtrs != nil {
-		mmHIncrBy.mock.t.Fatalf("RedisMock.HIncrBy mock is already set by ExpectParams functions")
+	if mmHIncrByBatch.defaultExpectation.paramPtrs != nil {
+		mmHIncrByBatch.mock.t.Fatalf("RedisMock.HIncrByBatch mock is already set by ExpectParams functions")
 	}
 
-	mmHIncrBy.defaultExpectation.params = &RedisMockHIncrByParams{ctx, key, field, incr}
-	mmHIncrBy.defaultExpectation.expectationOrigins.origin = minimock.CallerInfo(1)
-	for _, e := range mmHIncrBy.expectations {
-		if minimock.Equal(e.params, mmHIncrBy.defaultExpectation.params) {
-			mmHIncrBy.mock.t.Fatalf("Expectation set by When has same params: %#v", *mmHIncrBy.defaultExpectation.params)
+	mmHIncrByBatch.defaultExpectation.params = &RedisMockHIncrByBatchParams{ctx, key, increments}
+	mmHIncrByBatch.defaultExpectation.expectationOrigins.origin = minimock.CallerInfo(1)
+	for _, e := range mmHIncrByBatch.expectations {
+		if minimock.Equal(e.params, mmHIncrByBatch.defaultExpectation.params) {
+			mmHIncrByBatch.mock.t.Fatalf("Expectation set by When has same params: %#v", *mmHIncrByBatch.defaultExpectation.params)
 		}
 	}
 
-	return mmHIncrBy
+	return mmHIncrByBatch
 }
 
-// ExpectCtxParam1 sets up expected param ctx for redis.HIncrBy
-func (mmHIncrBy *mRedisMockHIncrBy) ExpectCtxParam1(ctx context.Context) *mRedisMockHIncrBy {
-	if mmHIncrBy.mock.funcHIncrBy != nil {
-		mmHIncrBy.mock.t.Fatalf("RedisMock.HIncrBy mock is already set by Set")
+// ExpectCtxParam1 sets up expected param ctx for redis.HIncrByBatch
+func (mmHIncrByBatch *mRedisMockHIncrByBatch) ExpectCtxParam1(ctx context.Context) *mRedisMockHIncrByBatch {
+	if mmHIncrByBatch.mock.funcHIncrByBatch != nil {
+		mmHIncrByBatch.mock.t.Fatalf("RedisMock.HIncrByBatch mock is already set by Set")
 	}
 
-	if mmHIncrBy.defaultExpectation == nil {
-		mmHIncrBy.defaultExpectation = &RedisMockHIncrByExpectation{}
+	if mmHIncrByBatch.defaultExpectation == nil {
+		mmHIncrByBatch.defaultExpectation = &RedisMockHIncrByBatchExpectation{}
 	}
 
-	if mmHIncrBy.defaultExpectation.params != nil {
-		mmHIncrBy.mock.t.Fatalf("RedisMock.HIncrBy mock is already set by Expect")
+	if mmHIncrByBatch.defaultExpectation.params != nil {
+		mmHIncrByBatch.mock.t.Fatalf("RedisMock.HIncrByBatch mock is already set by Expect")
 	}
 
-	if mmHIncrBy.defaultExpectation.paramPtrs == nil {
-		mmHIncrBy.defaultExpectation.paramPtrs = &RedisMockHIncrByParamPtrs{}
+	if mmHIncrByBatch.defaultExpectation.paramPtrs == nil {
+		mmHIncrByBatch.defaultExpectation.paramPtrs = &RedisMockHIncrByBatchParamPtrs{}
 	}
-	mmHIncrBy.defaultExpectation.paramPtrs.ctx = &ctx
-	mmHIncrBy.defaultExpectation.expectationOrigins.originCtx = minimock.CallerInfo(1)
+	mmHIncrByBatch.defaultExpectation.paramPtrs.ctx = &ctx
+	mmHIncrByBatch.defaultExpectation.expectationOrigins.originCtx = minimock.CallerInfo(1)
 
-	return mmHIncrBy
+	return mmHIncrByBatch
 }
 
-// ExpectKeyParam2 sets up expected param key for redis.HIncrBy
-func (mmHIncrBy *mRedisMockHIncrBy) ExpectKeyParam2(key string) *mRedisMockHIncrBy {
-	if mmHIncrBy.mock.funcHIncrBy != nil {
-		mmHIncrBy.mock.t.Fatalf("RedisMock.HIncrBy mock is already set by Set")
+// ExpectKeyParam2 sets up expected param key for redis.HIncrByBatch
+func (mmHIncrByBatch *mRedisMockHIncrByBatch) ExpectKeyParam2(key string) *mRedisMockHIncrByBatch {
+	if mmHIncrByBatch.mock.funcHIncrByBatch != nil {
+		mmHIncrByBatch.mock.t.Fatalf("RedisMock.HIncrByBatch mock is already set by Set")
 	}
 
-	if mmHIncrBy.defaultExpectation == nil {
-		mmHIncrBy.defaultExpectation = &RedisMockHIncrByExpectation{}
+	if mmHIncrByBatch.defaultExpectation == nil {
+		mmHIncrByBatch.defaultExpectation = &RedisMockHIncrByBatchExpectation{}
 	}
 
-	if mmHIncrBy.defaultExpectation.params != nil {
-		mmHIncrBy.mock.t.Fatalf("RedisMock.HIncrBy mock is already set by Expect")
+	if mmHIncrByBatch.defaultExpectation.params != nil {
+		mmHIncrByBatch.mock.t.Fatalf("RedisMock.HIncrByBatch mock is already set by Expect")
 	}
 
-	if mmHIncrBy.defaultExpectation.paramPtrs == nil {
-		mmHIncrBy.defaultExpectation.paramPtrs = &RedisMockHIncrByParamPtrs{}
+	if mmHIncrByBatch.defaultExpectation.paramPtrs == nil {
+		mmHIncrByBatch.defaultExpectation.paramPtrs = &RedisMockHIncrByBatchParamPtrs{}
 	}
-	mmHIncrBy.defaultExpectation.paramPtrs.key = &key
-	mmHIncrBy.defaultExpectation.expectationOrigins.originKey = minimock.CallerInfo(1)
+	mmHIncrByBatch.defaultExpectation.paramPtrs.key = &key
+	mmHIncrByBatch.defaultExpectation.expectationOrigins.originKey = minimock.CallerInfo(1)
 
-	return mmHIncrBy
+	return mmHIncrByBatch
 }
 
-// ExpectFieldParam3 sets up expected param field for redis.HIncrBy
-func (mmHIncrBy *mRedisMockHIncrBy) ExpectFieldParam3(field string) *mRedisMockHIncrBy {
-	if mmHIncrBy.mock.funcHIncrBy != nil {
-		mmHIncrBy.mock.t.Fatalf("RedisMock.HIncrBy mock is already set by Set")
+// ExpectIncrementsParam3 sets up expected param increments for redis.HIncrByBatch
+func (mmHIncrByBatch *mRedisMockHIncrByBatch) ExpectIncrementsParam3(increments map[string]int64) *mRedisMockHIncrByBatch {
+	if mmHIncrByBatch.mock.funcHIncrByBatch != nil {
+		mmHIncrByBatch.mock.t.Fatalf("RedisMock.HIncrByBatch mock is already set by Set")
 	}
 
-	if mmHIncrBy.defaultExpectation == nil {
-		mmHIncrBy.defaultExpectation = &RedisMockHIncrByExpectation{}
+	if mmHIncrByBatch.defaultExpectation == nil {
+		mmHIncrByBatch.defaultExpectation = &RedisMockHIncrByBatchExpectation{}
 	}
 
-	if mmHIncrBy.defaultExpectation.params != nil {
-		mmHIncrBy.mock.t.Fatalf("RedisMock.HIncrBy mock is already set by Expect")
+	if mmHIncrByBatch.defaultExpectation.params != nil {
+		mmHIncrByBatch.mock.t.Fatalf("RedisMock.HIncrByBatch mock is already set by Expect")
 	}
 
-	if mmHIncrBy.defaultExpectation.paramPtrs == nil {
-		mmHIncrBy.defaultExpectation.paramPtrs = &RedisMockHIncrByParamPtrs{}
+	if mmHIncrByBatch.defaultExpectation.paramPtrs == nil {
+		mmHIncrByBatch.defaultExpectation.paramPtrs = &RedisMockHIncrByBatchParamPtrs{}
 	}
-	mmHIncrBy.defaultExpectation.paramPtrs.field = &field
-	mmHIncrBy.defaultExpectation.expectationOrigins.originField = minimock.CallerInfo(1)
+	mmHIncrByBatch.defaultExpectation.paramPtrs.increments = &increments
+	mmHIncrByBatch.defaultExpectation.expectationOrigins.originIncrements = minimock.CallerInfo(1)
 
-	return mmHIncrBy
+	return mmHIncrByBatch
 }
 
-// ExpectIncrParam4 sets up expected param incr for redis.HIncrBy
-func (mmHIncrBy *mRedisMockHIncrBy) ExpectIncrParam4(incr int64) *mRedisMockHIncrBy {
-	if mmHIncrBy.mock.funcHIncrBy != nil {
-		mmHIncrBy.mock.t.Fatalf("RedisMock.HIncrBy mock is already set by Set")
+// Inspect accepts an inspector function that has same arguments as the redis.HIncrByBatch
+func (mmHIncrByBatch *mRedisMockHIncrByBatch) Inspect(f func(ctx context.Context, key string, increments map[string]int64)) *mRedisMockHIncrByBatch {
+	if mmHIncrByBatch.mock.inspectFuncHIncrByBatch != nil {
+		mmHIncrByBatch.mock.t.Fatalf("Inspect function is already set for RedisMock.HIncrByBatch")
 	}
 
-	if mmHIncrBy.defaultExpectation == nil {
-		mmHIncrBy.defaultExpectation = &RedisMockHIncrByExpectation{}
-	}
+	mmHIncrByBatch.mock.inspectFuncHIncrByBatch = f
 
-	if mmHIncrBy.defaultExpectation.params != nil {
-		mmHIncrBy.mock.t.Fatalf("RedisMock.HIncrBy mock is already set by Expect")
-	}
-
-	if mmHIncrBy.defaultExpectation.paramPtrs == nil {
-		mmHIncrBy.defaultExpectation.paramPtrs = &RedisMockHIncrByParamPtrs{}
-	}
-	mmHIncrBy.defaultExpectation.paramPtrs.incr = &incr
-	mmHIncrBy.defaultExpectation.expectationOrigins.originIncr = minimock.CallerInfo(1)
-
-	return mmHIncrBy
+	return mmHIncrByBatch
 }
 
-// Inspect accepts an inspector function that has same arguments as the redis.HIncrBy
-func (mmHIncrBy *mRedisMockHIncrBy) Inspect(f func(ctx context.Context, key string, field string, incr int64)) *mRedisMockHIncrBy {
-	if mmHIncrBy.mock.inspectFuncHIncrBy != nil {
-		mmHIncrBy.mock.t.Fatalf("Inspect function is already set for RedisMock.HIncrBy")
+// Return sets up results that will be returned by redis.HIncrByBatch
+func (mmHIncrByBatch *mRedisMockHIncrByBatch) Return(err error) *RedisMock {
+	if mmHIncrByBatch.mock.funcHIncrByBatch != nil {
+		mmHIncrByBatch.mock.t.Fatalf("RedisMock.HIncrByBatch mock is already set by Set")
 	}
 
-	mmHIncrBy.mock.inspectFuncHIncrBy = f
-
-	return mmHIncrBy
+	if mmHIncrByBatch.defaultExpectation == nil {
+		mmHIncrByBatch.defaultExpectation = &RedisMockHIncrByBatchExpectation{mock: mmHIncrByBatch.mock}
+	}
+	mmHIncrByBatch.defaultExpectation.results = &RedisMockHIncrByBatchResults{err}
+	mmHIncrByBatch.defaultExpectation.returnOrigin = minimock.CallerInfo(1)
+	return mmHIncrByBatch.mock
 }
 
-// Return sets up results that will be returned by redis.HIncrBy
-func (mmHIncrBy *mRedisMockHIncrBy) Return(err error) *RedisMock {
-	if mmHIncrBy.mock.funcHIncrBy != nil {
-		mmHIncrBy.mock.t.Fatalf("RedisMock.HIncrBy mock is already set by Set")
+// Set uses given function f to mock the redis.HIncrByBatch method
+func (mmHIncrByBatch *mRedisMockHIncrByBatch) Set(f func(ctx context.Context, key string, increments map[string]int64) (err error)) *RedisMock {
+	if mmHIncrByBatch.defaultExpectation != nil {
+		mmHIncrByBatch.mock.t.Fatalf("Default expectation is already set for the redis.HIncrByBatch method")
 	}
 
-	if mmHIncrBy.defaultExpectation == nil {
-		mmHIncrBy.defaultExpectation = &RedisMockHIncrByExpectation{mock: mmHIncrBy.mock}
+	if len(mmHIncrByBatch.expectations) > 0 {
+		mmHIncrByBatch.mock.t.Fatalf("Some expectations are already set for the redis.HIncrByBatch method")
 	}
-	mmHIncrBy.defaultExpectation.results = &RedisMockHIncrByResults{err}
-	mmHIncrBy.defaultExpectation.returnOrigin = minimock.CallerInfo(1)
-	return mmHIncrBy.mock
+
+	mmHIncrByBatch.mock.funcHIncrByBatch = f
+	mmHIncrByBatch.mock.funcHIncrByBatchOrigin = minimock.CallerInfo(1)
+	return mmHIncrByBatch.mock
 }
 
-// Set uses given function f to mock the redis.HIncrBy method
-func (mmHIncrBy *mRedisMockHIncrBy) Set(f func(ctx context.Context, key string, field string, incr int64) (err error)) *RedisMock {
-	if mmHIncrBy.defaultExpectation != nil {
-		mmHIncrBy.mock.t.Fatalf("Default expectation is already set for the redis.HIncrBy method")
-	}
-
-	if len(mmHIncrBy.expectations) > 0 {
-		mmHIncrBy.mock.t.Fatalf("Some expectations are already set for the redis.HIncrBy method")
-	}
-
-	mmHIncrBy.mock.funcHIncrBy = f
-	mmHIncrBy.mock.funcHIncrByOrigin = minimock.CallerInfo(1)
-	return mmHIncrBy.mock
-}
-
-// When sets expectation for the redis.HIncrBy which will trigger the result defined by the following
+// When sets expectation for the redis.HIncrByBatch which will trigger the result defined by the following
 // Then helper
-func (mmHIncrBy *mRedisMockHIncrBy) When(ctx context.Context, key string, field string, incr int64) *RedisMockHIncrByExpectation {
-	if mmHIncrBy.mock.funcHIncrBy != nil {
-		mmHIncrBy.mock.t.Fatalf("RedisMock.HIncrBy mock is already set by Set")
+func (mmHIncrByBatch *mRedisMockHIncrByBatch) When(ctx context.Context, key string, increments map[string]int64) *RedisMockHIncrByBatchExpectation {
+	if mmHIncrByBatch.mock.funcHIncrByBatch != nil {
+		mmHIncrByBatch.mock.t.Fatalf("RedisMock.HIncrByBatch mock is already set by Set")
 	}
 
-	expectation := &RedisMockHIncrByExpectation{
-		mock:               mmHIncrBy.mock,
-		params:             &RedisMockHIncrByParams{ctx, key, field, incr},
-		expectationOrigins: RedisMockHIncrByExpectationOrigins{origin: minimock.CallerInfo(1)},
+	expectation := &RedisMockHIncrByBatchExpectation{
+		mock:               mmHIncrByBatch.mock,
+		params:             &RedisMockHIncrByBatchParams{ctx, key, increments},
+		expectationOrigins: RedisMockHIncrByBatchExpectationOrigins{origin: minimock.CallerInfo(1)},
 	}
-	mmHIncrBy.expectations = append(mmHIncrBy.expectations, expectation)
+	mmHIncrByBatch.expectations = append(mmHIncrByBatch.expectations, expectation)
 	return expectation
 }
 
-// Then sets up redis.HIncrBy return parameters for the expectation previously defined by the When method
-func (e *RedisMockHIncrByExpectation) Then(err error) *RedisMock {
-	e.results = &RedisMockHIncrByResults{err}
+// Then sets up redis.HIncrByBatch return parameters for the expectation previously defined by the When method
+func (e *RedisMockHIncrByBatchExpectation) Then(err error) *RedisMock {
+	e.results = &RedisMockHIncrByBatchResults{err}
 	return e.mock
 }
 
-// Times sets number of times redis.HIncrBy should be invoked
-func (mmHIncrBy *mRedisMockHIncrBy) Times(n uint64) *mRedisMockHIncrBy {
+// Times sets number of times redis.HIncrByBatch should be invoked
+func (mmHIncrByBatch *mRedisMockHIncrByBatch) Times(n uint64) *mRedisMockHIncrByBatch {
 	if n == 0 {
-		mmHIncrBy.mock.t.Fatalf("Times of RedisMock.HIncrBy mock can not be zero")
+		mmHIncrByBatch.mock.t.Fatalf("Times of RedisMock.HIncrByBatch mock can not be zero")
 	}
-	mm_atomic.StoreUint64(&mmHIncrBy.expectedInvocations, n)
-	mmHIncrBy.expectedInvocationsOrigin = minimock.CallerInfo(1)
-	return mmHIncrBy
+	mm_atomic.StoreUint64(&mmHIncrByBatch.expectedInvocations, n)
+	mmHIncrByBatch.expectedInvocationsOrigin = minimock.CallerInfo(1)
+	return mmHIncrByBatch
 }
 
-func (mmHIncrBy *mRedisMockHIncrBy) invocationsDone() bool {
-	if len(mmHIncrBy.expectations) == 0 && mmHIncrBy.defaultExpectation == nil && mmHIncrBy.mock.funcHIncrBy == nil {
+func (mmHIncrByBatch *mRedisMockHIncrByBatch) invocationsDone() bool {
+	if len(mmHIncrByBatch.expectations) == 0 && mmHIncrByBatch.defaultExpectation == nil && mmHIncrByBatch.mock.funcHIncrByBatch == nil {
 		return true
 	}
 
-	totalInvocations := mm_atomic.LoadUint64(&mmHIncrBy.mock.afterHIncrByCounter)
-	expectedInvocations := mm_atomic.LoadUint64(&mmHIncrBy.expectedInvocations)
+	totalInvocations := mm_atomic.LoadUint64(&mmHIncrByBatch.mock.afterHIncrByBatchCounter)
+	expectedInvocations := mm_atomic.LoadUint64(&mmHIncrByBatch.expectedInvocations)
 
 	return totalInvocations > 0 && (expectedInvocations == 0 || expectedInvocations == totalInvocations)
 }
 
-// HIncrBy implements redis
-func (mmHIncrBy *RedisMock) HIncrBy(ctx context.Context, key string, field string, incr int64) (err error) {
-	mm_atomic.AddUint64(&mmHIncrBy.beforeHIncrByCounter, 1)
-	defer mm_atomic.AddUint64(&mmHIncrBy.afterHIncrByCounter, 1)
+// HIncrByBatch implements redis
+func (mmHIncrByBatch *RedisMock) HIncrByBatch(ctx context.Context, key string, increments map[string]int64) (err error) {
+	mm_atomic.AddUint64(&mmHIncrByBatch.beforeHIncrByBatchCounter, 1)
+	defer mm_atomic.AddUint64(&mmHIncrByBatch.afterHIncrByBatchCounter, 1)
 
-	mmHIncrBy.t.Helper()
+	mmHIncrByBatch.t.Helper()
 
-	if mmHIncrBy.inspectFuncHIncrBy != nil {
-		mmHIncrBy.inspectFuncHIncrBy(ctx, key, field, incr)
+	if mmHIncrByBatch.inspectFuncHIncrByBatch != nil {
+		mmHIncrByBatch.inspectFuncHIncrByBatch(ctx, key, increments)
 	}
 
-	mm_params := RedisMockHIncrByParams{ctx, key, field, incr}
+	mm_params := RedisMockHIncrByBatchParams{ctx, key, increments}
 
 	// Record call args
-	mmHIncrBy.HIncrByMock.mutex.Lock()
-	mmHIncrBy.HIncrByMock.callArgs = append(mmHIncrBy.HIncrByMock.callArgs, &mm_params)
-	mmHIncrBy.HIncrByMock.mutex.Unlock()
+	mmHIncrByBatch.HIncrByBatchMock.mutex.Lock()
+	mmHIncrByBatch.HIncrByBatchMock.callArgs = append(mmHIncrByBatch.HIncrByBatchMock.callArgs, &mm_params)
+	mmHIncrByBatch.HIncrByBatchMock.mutex.Unlock()
 
-	for _, e := range mmHIncrBy.HIncrByMock.expectations {
+	for _, e := range mmHIncrByBatch.HIncrByBatchMock.expectations {
 		if minimock.Equal(*e.params, mm_params) {
 			mm_atomic.AddUint64(&e.Counter, 1)
 			return e.results.err
 		}
 	}
 
-	if mmHIncrBy.HIncrByMock.defaultExpectation != nil {
-		mm_atomic.AddUint64(&mmHIncrBy.HIncrByMock.defaultExpectation.Counter, 1)
-		mm_want := mmHIncrBy.HIncrByMock.defaultExpectation.params
-		mm_want_ptrs := mmHIncrBy.HIncrByMock.defaultExpectation.paramPtrs
+	if mmHIncrByBatch.HIncrByBatchMock.defaultExpectation != nil {
+		mm_atomic.AddUint64(&mmHIncrByBatch.HIncrByBatchMock.defaultExpectation.Counter, 1)
+		mm_want := mmHIncrByBatch.HIncrByBatchMock.defaultExpectation.params
+		mm_want_ptrs := mmHIncrByBatch.HIncrByBatchMock.defaultExpectation.paramPtrs
 
-		mm_got := RedisMockHIncrByParams{ctx, key, field, incr}
+		mm_got := RedisMockHIncrByBatchParams{ctx, key, increments}
 
 		if mm_want_ptrs != nil {
 
 			if mm_want_ptrs.ctx != nil && !minimock.Equal(*mm_want_ptrs.ctx, mm_got.ctx) {
-				mmHIncrBy.t.Errorf("RedisMock.HIncrBy got unexpected parameter ctx, expected at\n%s:\nwant: %#v\n got: %#v%s\n",
-					mmHIncrBy.HIncrByMock.defaultExpectation.expectationOrigins.originCtx, *mm_want_ptrs.ctx, mm_got.ctx, minimock.Diff(*mm_want_ptrs.ctx, mm_got.ctx))
+				mmHIncrByBatch.t.Errorf("RedisMock.HIncrByBatch got unexpected parameter ctx, expected at\n%s:\nwant: %#v\n got: %#v%s\n",
+					mmHIncrByBatch.HIncrByBatchMock.defaultExpectation.expectationOrigins.originCtx, *mm_want_ptrs.ctx, mm_got.ctx, minimock.Diff(*mm_want_ptrs.ctx, mm_got.ctx))
 			}
 
 			if mm_want_ptrs.key != nil && !minimock.Equal(*mm_want_ptrs.key, mm_got.key) {
-				mmHIncrBy.t.Errorf("RedisMock.HIncrBy got unexpected parameter key, expected at\n%s:\nwant: %#v\n got: %#v%s\n",
-					mmHIncrBy.HIncrByMock.defaultExpectation.expectationOrigins.originKey, *mm_want_ptrs.key, mm_got.key, minimock.Diff(*mm_want_ptrs.key, mm_got.key))
+				mmHIncrByBatch.t.Errorf("RedisMock.HIncrByBatch got unexpected parameter key, expected at\n%s:\nwant: %#v\n got: %#v%s\n",
+					mmHIncrByBatch.HIncrByBatchMock.defaultExpectation.expectationOrigins.originKey, *mm_want_ptrs.key, mm_got.key, minimock.Diff(*mm_want_ptrs.key, mm_got.key))
 			}
 
-			if mm_want_ptrs.field != nil && !minimock.Equal(*mm_want_ptrs.field, mm_got.field) {
-				mmHIncrBy.t.Errorf("RedisMock.HIncrBy got unexpected parameter field, expected at\n%s:\nwant: %#v\n got: %#v%s\n",
-					mmHIncrBy.HIncrByMock.defaultExpectation.expectationOrigins.originField, *mm_want_ptrs.field, mm_got.field, minimock.Diff(*mm_want_ptrs.field, mm_got.field))
-			}
-
-			if mm_want_ptrs.incr != nil && !minimock.Equal(*mm_want_ptrs.incr, mm_got.incr) {
-				mmHIncrBy.t.Errorf("RedisMock.HIncrBy got unexpected parameter incr, expected at\n%s:\nwant: %#v\n got: %#v%s\n",
-					mmHIncrBy.HIncrByMock.defaultExpectation.expectationOrigins.originIncr, *mm_want_ptrs.incr, mm_got.incr, minimock.Diff(*mm_want_ptrs.incr, mm_got.incr))
+			if mm_want_ptrs.increments != nil && !minimock.Equal(*mm_want_ptrs.increments, mm_got.increments) {
+				mmHIncrByBatch.t.Errorf("RedisMock.HIncrByBatch got unexpected parameter increments, expected at\n%s:\nwant: %#v\n got: %#v%s\n",
+					mmHIncrByBatch.HIncrByBatchMock.defaultExpectation.expectationOrigins.originIncrements, *mm_want_ptrs.increments, mm_got.increments, minimock.Diff(*mm_want_ptrs.increments, mm_got.increments))
 			}
 
 		} else if mm_want != nil && !minimock.Equal(*mm_want, mm_got) {
-			mmHIncrBy.t.Errorf("RedisMock.HIncrBy got unexpected parameters, expected at\n%s:\nwant: %#v\n got: %#v%s\n",
-				mmHIncrBy.HIncrByMock.defaultExpectation.expectationOrigins.origin, *mm_want, mm_got, minimock.Diff(*mm_want, mm_got))
+			mmHIncrByBatch.t.Errorf("RedisMock.HIncrByBatch got unexpected parameters, expected at\n%s:\nwant: %#v\n got: %#v%s\n",
+				mmHIncrByBatch.HIncrByBatchMock.defaultExpectation.expectationOrigins.origin, *mm_want, mm_got, minimock.Diff(*mm_want, mm_got))
 		}
 
-		mm_results := mmHIncrBy.HIncrByMock.defaultExpectation.results
+		mm_results := mmHIncrByBatch.HIncrByBatchMock.defaultExpectation.results
 		if mm_results == nil {
-			mmHIncrBy.t.Fatal("No results are set for the RedisMock.HIncrBy")
+			mmHIncrByBatch.t.Fatal("No results are set for the RedisMock.HIncrByBatch")
 		}
 		return (*mm_results).err
 	}
-	if mmHIncrBy.funcHIncrBy != nil {
-		return mmHIncrBy.funcHIncrBy(ctx, key, field, incr)
+	if mmHIncrByBatch.funcHIncrByBatch != nil {
+		return mmHIncrByBatch.funcHIncrByBatch(ctx, key, increments)
 	}
-	mmHIncrBy.t.Fatalf("Unexpected call to RedisMock.HIncrBy. %v %v %v %v", ctx, key, field, incr)
+	mmHIncrByBatch.t.Fatalf("Unexpected call to RedisMock.HIncrByBatch. %v %v %v", ctx, key, increments)
 	return
 }
 
-// HIncrByAfterCounter returns a count of finished RedisMock.HIncrBy invocations
-func (mmHIncrBy *RedisMock) HIncrByAfterCounter() uint64 {
-	return mm_atomic.LoadUint64(&mmHIncrBy.afterHIncrByCounter)
+// HIncrByBatchAfterCounter returns a count of finished RedisMock.HIncrByBatch invocations
+func (mmHIncrByBatch *RedisMock) HIncrByBatchAfterCounter() uint64 {
+	return mm_atomic.LoadUint64(&mmHIncrByBatch.afterHIncrByBatchCounter)
 }
 
-// HIncrByBeforeCounter returns a count of RedisMock.HIncrBy invocations
-func (mmHIncrBy *RedisMock) HIncrByBeforeCounter() uint64 {
-	return mm_atomic.LoadUint64(&mmHIncrBy.beforeHIncrByCounter)
+// HIncrByBatchBeforeCounter returns a count of RedisMock.HIncrByBatch invocations
+func (mmHIncrByBatch *RedisMock) HIncrByBatchBeforeCounter() uint64 {
+	return mm_atomic.LoadUint64(&mmHIncrByBatch.beforeHIncrByBatchCounter)
 }
 
-// Calls returns a list of arguments used in each call to RedisMock.HIncrBy.
+// Calls returns a list of arguments used in each call to RedisMock.HIncrByBatch.
 // The list is in the same order as the calls were made (i.e. recent calls have a higher index)
-func (mmHIncrBy *mRedisMockHIncrBy) Calls() []*RedisMockHIncrByParams {
-	mmHIncrBy.mutex.RLock()
+func (mmHIncrByBatch *mRedisMockHIncrByBatch) Calls() []*RedisMockHIncrByBatchParams {
+	mmHIncrByBatch.mutex.RLock()
 
-	argCopy := make([]*RedisMockHIncrByParams, len(mmHIncrBy.callArgs))
-	copy(argCopy, mmHIncrBy.callArgs)
+	argCopy := make([]*RedisMockHIncrByBatchParams, len(mmHIncrByBatch.callArgs))
+	copy(argCopy, mmHIncrByBatch.callArgs)
 
-	mmHIncrBy.mutex.RUnlock()
+	mmHIncrByBatch.mutex.RUnlock()
 
 	return argCopy
 }
 
-// MinimockHIncrByDone returns true if the count of the HIncrBy invocations corresponds
+// MinimockHIncrByBatchDone returns true if the count of the HIncrByBatch invocations corresponds
 // the number of defined expectations
-func (m *RedisMock) MinimockHIncrByDone() bool {
-	if m.HIncrByMock.optional {
+func (m *RedisMock) MinimockHIncrByBatchDone() bool {
+	if m.HIncrByBatchMock.optional {
 		// Optional methods provide '0 or more' call count restriction.
 		return true
 	}
 
-	for _, e := range m.HIncrByMock.expectations {
+	for _, e := range m.HIncrByBatchMock.expectations {
 		if mm_atomic.LoadUint64(&e.Counter) < 1 {
 			return false
 		}
 	}
 
-	return m.HIncrByMock.invocationsDone()
+	return m.HIncrByBatchMock.invocationsDone()
 }
 
-// MinimockHIncrByInspect logs each unmet expectation
-func (m *RedisMock) MinimockHIncrByInspect() {
-	for _, e := range m.HIncrByMock.expectations {
+// MinimockHIncrByBatchInspect logs each unmet expectation
+func (m *RedisMock) MinimockHIncrByBatchInspect() {
+	for _, e := range m.HIncrByBatchMock.expectations {
 		if mm_atomic.LoadUint64(&e.Counter) < 1 {
-			m.t.Errorf("Expected call to RedisMock.HIncrBy at\n%s with params: %#v", e.expectationOrigins.origin, *e.params)
+			m.t.Errorf("Expected call to RedisMock.HIncrByBatch at\n%s with params: %#v", e.expectationOrigins.origin, *e.params)
 		}
 	}
 
-	afterHIncrByCounter := mm_atomic.LoadUint64(&m.afterHIncrByCounter)
+	afterHIncrByBatchCounter := mm_atomic.LoadUint64(&m.afterHIncrByBatchCounter)
 	// if default expectation was set then invocations count should be greater than zero
-	if m.HIncrByMock.defaultExpectation != nil && afterHIncrByCounter < 1 {
-		if m.HIncrByMock.defaultExpectation.params == nil {
-			m.t.Errorf("Expected call to RedisMock.HIncrBy at\n%s", m.HIncrByMock.defaultExpectation.returnOrigin)
+	if m.HIncrByBatchMock.defaultExpectation != nil && afterHIncrByBatchCounter < 1 {
+		if m.HIncrByBatchMock.defaultExpectation.params == nil {
+			m.t.Errorf("Expected call to RedisMock.HIncrByBatch at\n%s", m.HIncrByBatchMock.defaultExpectation.returnOrigin)
 		} else {
-			m.t.Errorf("Expected call to RedisMock.HIncrBy at\n%s with params: %#v", m.HIncrByMock.defaultExpectation.expectationOrigins.origin, *m.HIncrByMock.defaultExpectation.params)
+			m.t.Errorf("Expected call to RedisMock.HIncrByBatch at\n%s with params: %#v", m.HIncrByBatchMock.defaultExpectation.expectationOrigins.origin, *m.HIncrByBatchMock.defaultExpectation.params)
 		}
 	}
 	// if func was set then invocations count should be greater than zero
-	if m.funcHIncrBy != nil && afterHIncrByCounter < 1 {
-		m.t.Errorf("Expected call to RedisMock.HIncrBy at\n%s", m.funcHIncrByOrigin)
+	if m.funcHIncrByBatch != nil && afterHIncrByBatchCounter < 1 {
+		m.t.Errorf("Expected call to RedisMock.HIncrByBatch at\n%s", m.funcHIncrByBatchOrigin)
 	}
 
-	if !m.HIncrByMock.invocationsDone() && afterHIncrByCounter > 0 {
-		m.t.Errorf("Expected %d calls to RedisMock.HIncrBy at\n%s but found %d calls",
-			mm_atomic.LoadUint64(&m.HIncrByMock.expectedInvocations), m.HIncrByMock.expectedInvocationsOrigin, afterHIncrByCounter)
+	if !m.HIncrByBatchMock.invocationsDone() && afterHIncrByBatchCounter > 0 {
+		m.t.Errorf("Expected %d calls to RedisMock.HIncrByBatch at\n%s but found %d calls",
+			mm_atomic.LoadUint64(&m.HIncrByBatchMock.expectedInvocations), m.HIncrByBatchMock.expectedInvocationsOrigin, afterHIncrByBatchCounter)
 	}
 }
 
@@ -2697,7 +2666,7 @@ func (m *RedisMock) MinimockFinish() {
 
 			m.MinimockHGetAllInspect()
 
-			m.MinimockHIncrByInspect()
+			m.MinimockHIncrByBatchInspect()
 
 			m.MinimockHSetInspect()
 		}
@@ -2728,6 +2697,6 @@ func (m *RedisMock) minimockDone() bool {
 		m.MinimockHExistsDone() &&
 		m.MinimockHGetDone() &&
 		m.MinimockHGetAllDone() &&
-		m.MinimockHIncrByDone() &&
+		m.MinimockHIncrByBatchDone() &&
 		m.MinimockHSetDone()
 }

@@ -16,8 +16,7 @@ import (
 )
 
 const (
-	QueueAuth  = "auth"
-	QueueUsage = "usage"
+	QueueAuth = "auth"
 
 	metricsPath     = "/metrics"
 	shutdownTimeout = 5 * time.Second

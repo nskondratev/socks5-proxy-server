@@ -24,7 +24,7 @@ type passwordComparator interface {
 
 type updatesManager interface {
 	EnqueueLastAuthDateUpdate(user string) bool
-	EnqueueUsageUpdate(user string, dataLen int64) bool
+	AddUsage(user string, dataLen int64)
 }
 
 type AuthValidator interface {
@@ -158,23 +158,9 @@ func onProxyData(params NewServerParams, username string, dataLen int64) {
 		params.Metrics.ObserveProxyTrafficBytesByUsername(username, dataLen)
 	}
 
-	if params.UpdatesManager == nil {
-		return
+	if params.UpdatesManager != nil {
+		params.UpdatesManager.AddUsage(username, dataLen)
 	}
-
-	if queued := params.UpdatesManager.EnqueueUsageUpdate(username, dataLen); queued {
-		return
-	}
-
-	if params.Metrics != nil {
-		params.Metrics.ObserveDroppedRedisUpdate(metrics.QueueUsage)
-	}
-
-	log.Warn(
-		context.Background(),
-		"failed to enqueue data usage update for user",
-		log.String(log.FieldUsername, username),
-	)
 }
 
 func buildAuthOption(params NewServerParams) socks5.Option {

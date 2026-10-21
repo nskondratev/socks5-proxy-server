@@ -50,7 +50,7 @@ func main() {
 	updatesManager := users.NewUpdatesManager(
 		usersService,
 		config.RedisAuthUpdatesQueueSize(),
-		config.RedisUsageUpdatesQueueSize(),
+		config.RedisUsageFlushInterval(),
 	)
 
 	metricsService, err := metrics.New(metrics.Config{

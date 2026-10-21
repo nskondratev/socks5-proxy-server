@@ -138,6 +138,16 @@ func (r *fakeRedis) HDel(_ context.Context, key string, fields ...string) error 
 	return nil
 }
 
+func (r *fakeRedis) HIncrByBatch(ctx context.Context, key string, increments map[string]int64) error {
+	for field, incr := range increments {
+		if err := r.HIncrBy(ctx, key, field, incr); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (r *fakeRedis) HIncrBy(_ context.Context, key, field string, incr int64) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()

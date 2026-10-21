@@ -46,6 +46,20 @@ func TestRedisMethodsReturnErrorsForUnavailableRedis(t *testing.T) {
 	err = r.HIncrBy(ctx, "k", "f", 1)
 	assert.Error(t, err)
 
+	err = r.HIncrByBatch(ctx, "k", map[string]int64{"f": 1})
+	assert.Error(t, err)
+
 	err = r.Del(ctx, "k")
 	assert.Error(t, err)
+}
+
+func TestHIncrByBatchWithEmptyIncrementsIsNoop(t *testing.T) {
+	t.Parallel()
+
+	r := New("127.0.0.1", 1, 0)
+	t.Cleanup(func() {
+		_ = r.Close()
+	})
+
+	require.NoError(t, r.HIncrByBatch(context.Background(), "k", nil))
 }

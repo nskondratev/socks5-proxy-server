@@ -48,6 +48,23 @@ func (r *Redis) HIncrBy(ctx context.Context, key, field string, incr int64) erro
 	return r.cli.HIncrBy(ctx, key, field, incr).Err()
 }
 
+// HIncrByBatch increments several hash fields in a single round trip using a pipeline.
+func (r *Redis) HIncrByBatch(ctx context.Context, key string, increments map[string]int64) error {
+	if len(increments) == 0 {
+		return nil
+	}
+
+	_, err := r.cli.Pipelined(ctx, func(pipe redis.Pipeliner) error {
+		for field, incr := range increments {
+			pipe.HIncrBy(ctx, key, field, incr)
+		}
+
+		return nil
+	})
+
+	return err
+}
+
 func (r *Redis) Del(ctx context.Context, keys ...string) error {
 	return r.cli.Del(ctx, keys...).Err()
 }
