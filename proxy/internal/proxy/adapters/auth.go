@@ -2,7 +2,12 @@ package proxy
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"log"
+	"strconv"
+
+	"golang.org/x/sync/singleflight"
 )
 
 type passwordHashGetter interface {
@@ -66,6 +71,10 @@ type AuthWithCache struct {
 	cache cache
 	authValidator
 	onSuccessfulAuth func(user string)
+
+	// inflight deduplicates concurrent validations of the same credentials,
+	// so a burst of new connections triggers a single expensive password check.
+	inflight singleflight.Group
 }
 
 func NewAuthWithCache(cache cache, authValidator authValidator, onSuccessfulAuth func(user string)) *AuthWithCache {
@@ -88,13 +97,33 @@ func (a *AuthWithCache) Valid(user, password, _ string) bool {
 		return cachedValue
 	}
 
-	calculatedValue := a.authValidator.Valid(user, password, "")
+	result, _, _ := a.inflight.Do(inflightKey(user, password), func() (interface{}, error) {
+		// Another validation of the same credentials may have finished right before this one started.
+		if value, ok := a.cache.Get(entryCacheKey); ok {
+			return value, nil
+		}
 
-	a.cache.Add(entryCacheKey, calculatedValue)
+		value := a.authValidator.Valid(user, password, "")
+		a.cache.Add(entryCacheKey, value)
+
+		return value, nil
+	})
+
+	calculatedValue, _ := result.(bool)
 
 	if calculatedValue && a.onSuccessfulAuth != nil {
 		a.onSuccessfulAuth(user)
 	}
 
 	return calculatedValue
+}
+
+// inflightKey builds an unambiguous fixed-size key that does not keep the plain password.
+func inflightKey(user, password string) string {
+	hash := sha256.New()
+	// Length prefix keeps (user, password) pairs from colliding after concatenation.
+	hash.Write([]byte(strconv.Itoa(len(user)) + ":" + user))
+	hash.Write([]byte(password))
+
+	return hex.EncodeToString(hash.Sum(nil))
 }
