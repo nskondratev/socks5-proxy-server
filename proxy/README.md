@@ -46,6 +46,8 @@ go run ./cmd/loadtest \
     --password=test1
 ```
 
+When `--use-local-sink=true`, the load test rewrites `host.docker.internal`, `localhost`, and other loopback-style target hosts to the current machine's non-loopback IPv4 address before sending the SOCKS5 `CONNECT` request. This keeps the built-in sink reachable when the proxy itself runs inside Docker.
+
 ### What the load test measures
 
 - Number of simultaneous connections (`max_simultaneous_connections`)
